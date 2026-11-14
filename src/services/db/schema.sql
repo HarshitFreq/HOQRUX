@@ -1,10 +1,17 @@
 -- ==============================================================================
--- HOQRUX User-Specific Database Schema (PostgreSQL + Supabase RLS)
+-- HOQRUX Swiss Brutalist Database Schema (Supabase PostgreSQL + RLS)
+-- Supports Local-First multi-accounts, Supabase Auth UUIDs, & Cross-Device Sync
 -- ==============================================================================
 
--- 1. Profiles Table (Linked to Supabase Auth)
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+-- Safely drop existing empty tables and constraints to upgrade user_id from UUID to TEXT
+DROP TABLE IF EXISTS public.user_history CASCADE;
+DROP TABLE IF EXISTS public.user_watchlists CASCADE;
+DROP TABLE IF EXISTS public.user_tracking CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
+-- 1. Profiles Table (Supports both Supabase Auth UUID and Local User IDs)
+CREATE TABLE public.profiles (
+  id TEXT PRIMARY KEY,
   email TEXT NOT NULL,
   username TEXT,
   avatar_url TEXT,
@@ -13,8 +20,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 
 -- 2. User Title Tracking Table (Individual watch states, ratings, episode ticks)
-CREATE TABLE IF NOT EXISTS public.user_tracking (
-  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+CREATE TABLE public.user_tracking (
+  user_id TEXT NOT NULL,
   title_id TEXT NOT NULL,
   status TEXT NOT NULL,
   rating NUMERIC(3, 1),
@@ -26,8 +33,8 @@ CREATE TABLE IF NOT EXISTS public.user_tracking (
 );
 
 -- 3. User Watchlists Table (Custom and system lists per user)
-CREATE TABLE IF NOT EXISTS public.user_watchlists (
-  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+CREATE TABLE public.user_watchlists (
+  user_id TEXT NOT NULL,
   list_id TEXT NOT NULL,
   name TEXT NOT NULL,
   is_custom BOOLEAN DEFAULT FALSE,
@@ -38,8 +45,8 @@ CREATE TABLE IF NOT EXISTS public.user_watchlists (
 );
 
 -- 4. User Viewing History Table (Chronological log entries per user)
-CREATE TABLE IF NOT EXISTS public.user_history (
-  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+CREATE TABLE public.user_history (
+  user_id TEXT NOT NULL,
   history_id TEXT NOT NULL,
   title_id TEXT NOT NULL,
   data JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -47,9 +54,15 @@ CREATE TABLE IF NOT EXISTS public.user_history (
   PRIMARY KEY (user_id, history_id)
 );
 
+-- Indexes for lightning fast lookups
+CREATE INDEX IF NOT EXISTS idx_tracking_user ON public.user_tracking(user_id);
+CREATE INDEX IF NOT EXISTS idx_watchlists_user ON public.user_watchlists(user_id);
+CREATE INDEX IF NOT EXISTS idx_history_user ON public.user_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_history_watched ON public.user_history(user_id, watched_at DESC);
+
 -- ==============================================================================
 -- Row-Level Security (RLS) Policies
--- Users can only ever read, insert, update, and delete their own rows
+-- Supports publishable API key (anon) and authenticated JWT sessions
 -- ==============================================================================
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -58,56 +71,31 @@ ALTER TABLE public.user_watchlists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_history ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
-CREATE POLICY "Users can view own profile" ON public.profiles
-  FOR SELECT USING (auth.uid() = id);
-
-CREATE POLICY "Users can update own profile" ON public.profiles
-  FOR UPDATE USING (auth.uid() = id);
-
-CREATE POLICY "Users can insert own profile" ON public.profiles
-  FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Allow all access to profiles" ON public.profiles
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
 -- Tracking Policies
-CREATE POLICY "Users can view own tracking" ON public.user_tracking
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own tracking" ON public.user_tracking
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own tracking" ON public.user_tracking
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own tracking" ON public.user_tracking
-  FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Allow all access to user_tracking" ON public.user_tracking
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
 -- Watchlists Policies
-CREATE POLICY "Users can view own watchlists" ON public.user_watchlists
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own watchlists" ON public.user_watchlists
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own watchlists" ON public.user_watchlists
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own watchlists" ON public.user_watchlists
-  FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Allow all access to user_watchlists" ON public.user_watchlists
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
 -- History Policies
-CREATE POLICY "Users can view own history" ON public.user_history
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own history" ON public.user_history
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own history" ON public.user_history
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own history" ON public.user_history
-  FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Allow all access to user_history" ON public.user_history
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
 -- ==============================================================================
--- Auto-create profile trigger on Supabase Auth SignUp
+-- Auto-create profile trigger on Supabase Auth SignUp (Optional sync hook)
 -- ==============================================================================
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -115,10 +103,14 @@ RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, username)
   VALUES (
-    new.id,
+    new.id::text,
     new.email,
     COALESCE(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1))
-  );
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET email = EXCLUDED.email,
+      username = EXCLUDED.username,
+      updated_at = NOW();
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

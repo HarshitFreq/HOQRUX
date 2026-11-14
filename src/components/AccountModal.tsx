@@ -43,13 +43,14 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
     triggerSync,
   } = useAuth();
 
-  const { stats, watchlists } = useTracking();
+  const { tracking, stats, watchlists, refreshTracking } = useTracking();
 
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Cloud config accordion
@@ -232,9 +233,9 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                 <View style={styles.metricsBar}>
                   <View style={styles.metricItem}>
                     <Text style={styles.metricVal}>
-                      {(stats?.totalMoviesWatched ?? 0) + (stats?.totalEpisodesWatched ?? 0)}
+                      {Object.keys(tracking || {}).length}
                     </Text>
-                    <Text style={styles.metricLbl}>LOGGED</Text>
+                    <Text style={styles.metricLbl}>TRACKED</Text>
                   </View>
                   <View style={styles.metricDivider} />
                   <View style={styles.metricItem}>
@@ -244,29 +245,41 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                   <View style={styles.metricDivider} />
                   <View style={styles.metricItem}>
                     <Text style={styles.metricVal}>
-                      {stats?.topGenres?.length ?? 0}
+                      {(stats?.totalMoviesWatched ?? 0) + (stats?.totalEpisodesWatched ?? 0)}
                     </Text>
-                    <Text style={styles.metricLbl}>GENRES</Text>
+                    <Text style={styles.metricLbl}>LOGGED</Text>
                   </View>
                 </View>
 
                 {/* Cloud Sync Action */}
                 {isCloudConnected && (
                   <TouchableOpacity
-                    style={styles.syncBtn}
+                    style={[styles.syncBtn, isSyncing && { opacity: 0.6 }]}
+                    disabled={isSyncing}
                     onPress={async () => {
+                      setIsSyncing(true);
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      const ok = await triggerSync();
-                      if (ok) {
-                        Alert.alert('SYNCED', 'All logs and watchlists synced to cloud.');
+                      const res = await triggerSync();
+                      await refreshTracking();
+                      setIsSyncing(false);
+                      if (res.success) {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        Alert.alert('CLOUD SYNC COMPLETE', res.message);
                       } else {
-                        Alert.alert('SYNC STATUS', 'Sync attempted.');
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                        Alert.alert('SYNC FAILED', res.message);
                       }
                     }}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="cloud-upload-outline" size={14} color={colors.accent} style={{ marginRight: 6 }} />
-                    <Text style={styles.syncBtnText}>FORCE CLOUD SYNC NOW</Text>
+                    {isSyncing ? (
+                      <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 8 }} />
+                    ) : (
+                      <Ionicons name="cloud-upload-outline" size={14} color={colors.accent} style={{ marginRight: 6 }} />
+                    )}
+                    <Text style={styles.syncBtnText}>
+                      {isSyncing ? 'SYNCING WITH SUPABASE...' : 'FORCE CLOUD SYNC NOW'}
+                    </Text>
                   </TouchableOpacity>
                 )}
 

@@ -122,21 +122,30 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const persistTracking = useCallback(async (nextTracking: Record<string, UserTitleTracking>, titleId?: string) => {
     await databaseService.saveUserTracking(userId, nextTracking);
     if (!user.isGuest && titleId && nextTracking[titleId]) {
-      databaseService.pushTitleTrackingToCloud(userId, titleId, nextTracking[titleId]).catch(() => {});
+      databaseService.pushTitleTrackingToCloud(userId, titleId, nextTracking[titleId]).catch((err) => {
+        console.warn('[TrackingContext] Background title tracking push error:', err);
+      });
     }
   }, [userId, user.isGuest]);
 
   const persistWatchlists = useCallback(async (nextLists: Watchlist[]) => {
     await databaseService.saveUserWatchlists(userId, nextLists);
     if (!user.isGuest) {
-      databaseService.pushAllToCloud(userId, tracking, nextLists, history).catch(() => {});
+      databaseService.pushAllToCloud(userId, tracking, nextLists, history, {
+        email: user.email,
+        username: user.username,
+      }).catch((err) => {
+        console.warn('[TrackingContext] Background watchlists push error:', err);
+      });
     }
-  }, [userId, user.isGuest, tracking, history]);
+  }, [userId, user.isGuest, tracking, history, user.email, user.username]);
 
   const persistHistory = useCallback(async (nextHistory: ViewingHistoryEntry[]) => {
     await databaseService.saveUserHistory(userId, nextHistory);
     if (!user.isGuest && nextHistory.length > 0 && nextHistory[0]) {
-      databaseService.pushHistoryEntryToCloud(userId, nextHistory[0]).catch(() => {});
+      databaseService.pushHistoryEntryToCloud(userId, nextHistory[0]).catch((err) => {
+        console.warn('[TrackingContext] Background history push error:', err);
+      });
     }
   }, [userId, user.isGuest]);
 
@@ -164,13 +173,21 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setLoading(false);
         }
 
-        // Background cloud sync for authenticated users
+        // Complete bidirectional sync with Supabase cloud
         if (!user.isGuest) {
-          databaseService.syncFromCloud(userId).then((cloudData) => {
-            if (cloudData && isMounted) {
-              if (cloudData.tracking) setTracking(cloudData.tracking);
-              if (cloudData.watchlists) setWatchlists(cloudData.watchlists);
-              if (cloudData.history) setHistory(cloudData.history);
+          databaseService.fullCloudSync(user).then((res) => {
+            if (res.success && isMounted) {
+              Promise.all([
+                databaseService.getUserTracking(userId),
+                databaseService.getUserWatchlists(userId),
+                databaseService.getUserHistory(userId),
+              ]).then(([mergedTracking, mergedLists, mergedHist]) => {
+                if (isMounted) {
+                  setTracking(mergedTracking);
+                  setWatchlists(mergedLists);
+                  setHistory(mergedHist);
+                }
+              });
             }
           });
         }
@@ -183,7 +200,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       isMounted = false;
     };
-  }, [userId, user.isGuest]);
+  }, [userId, user]);
 
   const getTrackingForTitle = useCallback((titleId: string): UserTitleTracking | undefined => {
     return tracking[titleId];
