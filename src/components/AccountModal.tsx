@@ -38,8 +38,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
     signUp,
     signOut,
     switchAccount,
-    connectSupabase,
-    disconnectSupabase,
     triggerSync,
   } = useAuth();
 
@@ -48,16 +46,11 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Cloud config accordion
-  const [showCloudConfig, setShowCloudConfig] = useState(false);
-  const [supabaseUrl, setSupabaseUrl] = useState('');
-  const [supabaseKey, setSupabaseKey] = useState('');
-  const [isConnectingCloud, setIsConnectingCloud] = useState(false);
 
   const resetForm = () => {
     setEmail('');
@@ -80,18 +73,19 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
 
     if (res.success) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await refreshTracking();
       resetForm();
       onClose();
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setErrorMsg(res.error || 'Sign in failed');
+      setErrorMsg(res.error || 'Sign in failed. Check your credentials.');
     }
   };
 
   const handleSignUp = async () => {
     setErrorMsg(null);
     if (!email || !password) {
-      setErrorMsg('Please enter email and password.');
+      setErrorMsg('Please enter your email and password.');
       return;
     }
     if (password.length < 6) {
@@ -106,40 +100,28 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
 
     if (res.success) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await refreshTracking();
       resetForm();
       onClose();
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setErrorMsg(res.error || 'Sign up failed');
+      setErrorMsg(res.error || 'Unable to create account.');
     }
-  };
-
-  const handleQuickLogin = async (demoEmail: string, demoPass: string, demoName: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsSubmitting(true);
-    setErrorMsg(null);
-    // Try sign in, if not found auto-create
-    const res = await signIn(demoEmail, demoPass);
-    if (!res.success) {
-      await signUp(demoEmail, demoPass, demoName);
-    }
-    setIsSubmitting(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onClose();
   };
 
   const handleSignOut = () => {
     Alert.alert(
-      'LOG OUT',
-      'Your tracking and logs will remain safely saved in your account. You can log back in anytime to restore them.',
+      'SIGN OUT',
+      'Your watchlists and viewing history remain safely backed up in your account. You can sign back in anytime to restore them.',
       [
         { text: 'CANCEL', style: 'cancel' },
         {
-          text: 'LOG OUT',
+          text: 'SIGN OUT',
           style: 'destructive',
           onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             await signOut();
+            await refreshTracking();
             onClose();
           },
         },
@@ -150,25 +132,22 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
   const handleSwitch = async (targetId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await switchAccount(targetId);
+    await refreshTracking();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onClose();
   };
 
-  const handleConnectCloud = async () => {
-    if (!supabaseUrl || !supabaseKey) {
-      Alert.alert('CONFIG ERROR', 'Please enter both Supabase URL and Anon Key.');
-      return;
-    }
-    setIsConnectingCloud(true);
-    const ok = await connectSupabase(supabaseUrl, supabaseKey);
-    setIsConnectingCloud(false);
-    if (ok) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('CONNECTED', 'Successfully connected to Supabase PostgreSQL database.');
-      setShowCloudConfig(false);
-    } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('CONNECTION FAILED', 'Could not initialize Supabase with the provided credentials.');
+  const getSyncBadgeLabel = () => {
+    if (!isCloudConnected) return 'OFFLINE // LOCAL ONLY';
+    switch (cloudSyncStatus) {
+      case 'synced':
+        return 'CLOUD BACKUP // SYNCED';
+      case 'syncing':
+        return 'SYNCING WITH CLOUD...';
+      case 'offline':
+        return 'OFFLINE // SAVED LOCALLY';
+      default:
+        return 'LOCAL ONLY';
     }
   };
 
@@ -182,9 +161,11 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
           {/* Header */}
           <View style={styles.headerRow}>
             <View>
-              <Text style={styles.headerTitle}>USER DATABASE</Text>
+              <Text style={styles.headerTitle}>HOQRUX ID</Text>
               <Text style={styles.headerSubtitle}>
-                {isAuthenticated ? 'ACCOUNT SECURED & LOGGED' : 'SIGN IN TO PERSIST LOGS'}
+                {isAuthenticated
+                  ? 'PERSONAL LOGBOOK // BACKUP ACTIVE'
+                  : 'SIGN IN TO SYNC ACROSS ALL DEVICES'}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
@@ -193,10 +174,10 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
           </View>
 
           <ScrollView style={styles.scrollArea} showsVerticalScrollIndicator={false}>
-            {/* If Logged In View */}
+            {/* Authenticated View */}
             {isAuthenticated ? (
               <View style={styles.authenticatedBox}>
-                {/* User Card */}
+                {/* User Profile Card */}
                 <View style={styles.userCard}>
                   <View style={styles.avatar}>
                     <Text style={styles.avatarText}>
@@ -220,11 +201,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                           },
                         ]}
                       />
-                      <Text style={styles.badgeText}>
-                        {isCloudConnected
-                          ? `SUPABASE CLOUD (${cloudSyncStatus.toUpperCase()})`
-                          : 'LOCAL DATABASE (ACCOUNT PERSISTED)'}
-                      </Text>
+                      <Text style={styles.badgeText}>{getSyncBadgeLabel()}</Text>
                     </View>
                   </View>
                 </View>
@@ -235,7 +212,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                     <Text style={styles.metricVal}>
                       {Object.keys(tracking || {}).length}
                     </Text>
-                    <Text style={styles.metricLbl}>TRACKED</Text>
+                    <Text style={styles.metricLbl}>TITLES</Text>
                   </View>
                   <View style={styles.metricDivider} />
                   <View style={styles.metricItem}>
@@ -247,46 +224,47 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                     <Text style={styles.metricVal}>
                       {(stats?.totalMoviesWatched ?? 0) + (stats?.totalEpisodesWatched ?? 0)}
                     </Text>
-                    <Text style={styles.metricLbl}>LOGGED</Text>
+                    <Text style={styles.metricLbl}>LOGS</Text>
                   </View>
                 </View>
 
                 {/* Cloud Sync Action */}
-                {isCloudConnected && (
-                  <TouchableOpacity
-                    style={[styles.syncBtn, isSyncing && { opacity: 0.6 }]}
-                    disabled={isSyncing}
-                    onPress={async () => {
-                      setIsSyncing(true);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      const res = await triggerSync();
-                      await refreshTracking();
-                      setIsSyncing(false);
-                      if (res.success) {
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        Alert.alert('CLOUD SYNC COMPLETE', res.message);
-                      } else {
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                        Alert.alert('SYNC FAILED', res.message);
-                      }
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    {isSyncing ? (
-                      <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 8 }} />
-                    ) : (
-                      <Ionicons name="cloud-upload-outline" size={14} color={colors.accent} style={{ marginRight: 6 }} />
-                    )}
-                    <Text style={styles.syncBtnText}>
-                      {isSyncing ? 'SYNCING WITH SUPABASE...' : 'FORCE CLOUD SYNC NOW'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={[styles.syncBtn, isSyncing && { opacity: 0.6 }]}
+                  disabled={isSyncing}
+                  onPress={async () => {
+                    setIsSyncing(true);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    const res = await triggerSync();
+                    await refreshTracking();
+                    setIsSyncing(false);
+                    if (res.success) {
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      Alert.alert('SYNC COMPLETE', 'All your watchlists, tracking, and logs are backed up.');
+                    } else {
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                      Alert.alert(
+                        'SYNC STATUS',
+                        res.message || 'Unable to sync with cloud right now. Your data remains safely stored locally.'
+                      );
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {isSyncing ? (
+                    <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 8 }} />
+                  ) : (
+                    <Ionicons name="cloud-upload-outline" size={16} color={colors.accent} style={{ marginRight: 8 }} />
+                  )}
+                  <Text style={styles.syncBtnText}>
+                    {isSyncing ? 'SYNCING DATA...' : 'SYNC WITH CLOUD'}
+                  </Text>
+                </TouchableOpacity>
 
-                {/* Account Switcher List */}
+                {/* Saved Profiles Switcher (If multiple on device) */}
                 {savedAccounts.length > 1 && (
                   <View style={styles.switchSection}>
-                    <Text style={styles.sectionLabel}>SWITCH ACCOUNTS ON DEVICE</Text>
+                    <Text style={styles.sectionLabel}>SAVED PROFILES</Text>
                     {savedAccounts.map((acc) => {
                       const isCurrent = acc.id === user.id;
                       return (
@@ -315,16 +293,16 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                   </View>
                 )}
 
-                {/* Logout Button */}
+                {/* Sign Out Button */}
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut} activeOpacity={0.7}>
-                  <Ionicons name="log-out-outline" size={14} color={COLOR_CARDINAL} style={{ marginRight: 6 }} />
-                  <Text style={styles.logoutBtnText}>LOG OUT OF ACCOUNT</Text>
+                  <Ionicons name="log-out-outline" size={15} color={COLOR_CARDINAL} style={{ marginRight: 8 }} />
+                  <Text style={styles.logoutBtnText}>SIGN OUT</Text>
                 </TouchableOpacity>
               </View>
             ) : (
-              /* If Logged Out / Guest View */
+              /* Logged Out / Guest View (Sign In & Sign Up) */
               <View style={styles.unauthBox}>
-                {/* Segment tabs */}
+                {/* Segment Tabs */}
                 <View style={styles.segmentRow}>
                   <TouchableOpacity
                     style={[styles.segmentTab, activeTab === 'signin' && styles.segmentTabActive]}
@@ -361,13 +339,13 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                   </View>
                 )}
 
-                {/* Form Inputs */}
+                {/* Username Input (Only on Sign Up) */}
                 {activeTab === 'signup' && (
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>USERNAME</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="e.g. MOVIEBUFF"
+                      placeholder="e.g. CINEMABUFF"
                       placeholderTextColor={colors.textMuted}
                       value={username}
                       onChangeText={setUsername}
@@ -376,11 +354,12 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                   </View>
                 )}
 
+                {/* Email Input */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="user@example.com"
+                    placeholder="you@domain.com"
                     placeholderTextColor={colors.textMuted}
                     value={email}
                     onChangeText={setEmail}
@@ -390,19 +369,33 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                   />
                 </View>
 
+                {/* Password Input with Visibility Toggle */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>PASSWORD</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="••••••••"
-                    placeholderTextColor={colors.textMuted}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                  />
+                  <View style={styles.passwordRow}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="••••••••"
+                      placeholderTextColor={colors.textMuted}
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeBtn}
+                      onPress={() => setShowPassword(!showPassword)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                        size={18}
+                        color={colors.textMuted}
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
-                {/* Submit button */}
+                {/* Submit Button */}
                 <TouchableOpacity
                   style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
                   onPress={activeTab === 'signin' ? handleSignIn : handleSignUp}
@@ -413,113 +406,29 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                     <ActivityIndicator size="small" color={colors.void} />
                   ) : (
                     <Text style={styles.submitBtnText}>
-                      {activeTab === 'signin' ? 'SIGN IN TO HOQRUX' : 'CREATE ACCOUNT & SYNC'}
+                      {activeTab === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT'}
                     </Text>
                   )}
                 </TouchableOpacity>
 
-                {/* Quick 1-Tap Demo Accounts */}
-                <View style={styles.demoSection}>
-                  <Text style={styles.demoSectionTitle}>QUICK ACCOUNT TESTING</Text>
-                  <Text style={styles.demoSectionDesc}>
-                    Tap to instantly test user database isolation and multi-account logging:
-                  </Text>
-                  <View style={styles.demoButtonsRow}>
-                    <TouchableOpacity
-                      style={styles.demoBtn}
-                      onPress={() => handleQuickLogin('alice@hoqrux.app', 'hoqrux123', 'ALICE')}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.demoBtnText}>USER 1: ALICE</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.demoBtn}
-                      onPress={() => handleQuickLogin('bob@hoqrux.app', 'hoqrux123', 'BOB')}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.demoBtnText}>USER 2: BOB</Text>
-                    </TouchableOpacity>
+                {/* Feature Highlights Card */}
+                <View style={styles.featuresCard}>
+                  <Text style={styles.featuresTitle}>HOQRUX LOGBOOK SYNC</Text>
+                  <View style={styles.featureItem}>
+                    <Ionicons name="checkmark-sharp" size={14} color={COLOR_EMERALD} style={{ marginRight: 8 }} />
+                    <Text style={styles.featureText}>Automatic cross-device cloud sync</Text>
+                  </View>
+                  <View style={styles.featureItem}>
+                    <Ionicons name="checkmark-sharp" size={14} color={COLOR_EMERALD} style={{ marginRight: 8 }} />
+                    <Text style={styles.featureText}>Safe offline backup for all watchlists</Text>
+                  </View>
+                  <View style={styles.featureItem}>
+                    <Ionicons name="checkmark-sharp" size={14} color={COLOR_EMERALD} style={{ marginRight: 8 }} />
+                    <Text style={styles.featureText}>Existing local titles migrate automatically</Text>
                   </View>
                 </View>
               </View>
             )}
-
-            {/* Cloud Database (Supabase) Setup Section */}
-            <View style={styles.cloudConfigContainer}>
-              <TouchableOpacity
-                style={styles.cloudConfigHeader}
-                onPress={() => setShowCloudConfig(!showCloudConfig)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.cloudConfigHeaderLeft}>
-                  <Ionicons name="server-outline" size={14} color={colors.accent} style={{ marginRight: 6 }} />
-                  <Text style={styles.cloudConfigHeaderText}>SUPABASE POSTGRESQL SETTINGS</Text>
-                </View>
-                <Ionicons
-                  name={showCloudConfig ? 'chevron-up' : 'chevron-down'}
-                  size={14}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-
-              {showCloudConfig && (
-                <View style={styles.cloudConfigBody}>
-                  <Text style={styles.cloudConfigNotice}>
-                    Connect your own Supabase project URL and anon public key for cross-device cloud sync:
-                  </Text>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>SUPABASE URL</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="https://xyz.supabase.co"
-                      placeholderTextColor={colors.textMuted}
-                      value={supabaseUrl}
-                      onChangeText={setSupabaseUrl}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                  </View>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>SUPABASE ANON KEY</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="eyJhbGciOiJIUzI1NiIsIn..."
-                      placeholderTextColor={colors.textMuted}
-                      value={supabaseKey}
-                      onChangeText={setSupabaseKey}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                  </View>
-                  <View style={styles.cloudBtnRow}>
-                    <TouchableOpacity
-                      style={styles.cloudSaveBtn}
-                      onPress={handleConnectCloud}
-                      activeOpacity={0.7}
-                      disabled={isConnectingCloud}
-                    >
-                      {isConnectingCloud ? (
-                        <ActivityIndicator size="small" color={colors.void} />
-                      ) : (
-                        <Text style={styles.cloudSaveBtnText}>SAVE & CONNECT CLOUD</Text>
-                      )}
-                    </TouchableOpacity>
-                    {isCloudConnected && (
-                      <TouchableOpacity
-                        style={styles.cloudDisconnectBtn}
-                        onPress={async () => {
-                          await disconnectSupabase();
-                          Alert.alert('DISCONNECTED', 'Switched back to local-first database mode.');
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.cloudDisconnectBtnText}>DISCONNECT</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              )}
-            </View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
@@ -530,14 +439,14 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(5, 5, 7, 0.88)',
+    backgroundColor: 'rgba(5, 5, 7, 0.85)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#0A0A10',
+    backgroundColor: '#09090E',
     borderTopWidth: 1,
-    borderColor: '#262630',
-    maxHeight: '88%',
+    borderColor: '#22222E',
+    maxHeight: '90%',
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
   },
   headerRow: {
@@ -548,50 +457,45 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderColor: '#181822',
+    borderColor: '#181824',
   },
   headerTitle: {
     color: colors.textPrimary,
     fontFamily: typography.fontBlack,
-    fontSize: 14,
+    fontSize: 16,
     letterSpacing: 1.5,
   },
   headerSubtitle: {
     color: colors.textMuted,
-    fontFamily: typography.fontBody,
-    fontSize: 10,
-    letterSpacing: 0.8,
-    marginTop: 2,
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    letterSpacing: 1,
+    marginTop: 3,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#14141E',
-    borderWidth: 1,
-    borderColor: '#262630',
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 6,
   },
   scrollArea: {
     paddingHorizontal: 20,
     paddingTop: 16,
   },
+
+  // Authenticated Profile Styles
   authenticatedBox: {
     gap: 16,
   },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0E0E14',
+    backgroundColor: '#0D0D14',
     borderWidth: 1,
-    borderColor: '#262630',
+    borderColor: '#22222E',
     padding: 16,
   },
   avatar: {
     width: 48,
     height: 48,
-    backgroundColor: '#1E1E2A',
+    backgroundColor: '#161622',
     borderWidth: 1,
     borderColor: colors.accent,
     alignItems: 'center',
@@ -609,13 +513,13 @@ const styles = StyleSheet.create({
   userName: {
     color: colors.textPrimary,
     fontFamily: typography.fontBold,
-    fontSize: 14,
+    fontSize: 15,
     letterSpacing: 0.5,
   },
   userEmail: {
     color: colors.textSecondary,
     fontFamily: typography.fontBody,
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 2,
   },
   badgeRow: {
@@ -633,15 +537,17 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontFamily: typography.fontBold,
     fontSize: 9,
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
+
+  // Metrics Bar
   metricsBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0E0E14',
+    backgroundColor: '#0D0D14',
     borderWidth: 1,
-    borderColor: '#262630',
-    paddingVertical: 12,
+    borderColor: '#22222E',
+    paddingVertical: 14,
   },
   metricItem: {
     flex: 1,
@@ -650,39 +556,43 @@ const styles = StyleSheet.create({
   metricVal: {
     color: colors.textPrimary,
     fontFamily: typography.fontBlack,
-    fontSize: 16,
+    fontSize: 18,
   },
   metricLbl: {
     color: colors.textMuted,
     fontFamily: typography.fontBold,
     fontSize: 9,
-    letterSpacing: 1,
-    marginTop: 2,
+    letterSpacing: 1.2,
+    marginTop: 3,
   },
   metricDivider: {
     width: 1,
     height: 24,
-    backgroundColor: '#262630',
+    backgroundColor: '#22222E',
   },
+
+  // Sync Button
   syncBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#12121C',
+    backgroundColor: '#10101A',
     borderWidth: 1,
     borderColor: colors.accent,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   syncBtnText: {
     color: colors.accent,
     fontFamily: typography.fontBold,
-    fontSize: 11,
-    letterSpacing: 1,
+    fontSize: 12,
+    letterSpacing: 1.2,
   },
+
+  // Switch Profiles Section
   switchSection: {
-    backgroundColor: '#0E0E14',
+    backgroundColor: '#0D0D14',
     borderWidth: 1,
-    borderColor: '#262630',
+    borderColor: '#22222E',
     padding: 12,
   },
   sectionLabel: {
@@ -697,11 +607,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderColor: '#181822',
+    borderBottomColor: '#181824',
   },
   accountRowActive: {
-    opacity: 0.9,
+    backgroundColor: '#151522',
   },
   accountRowLeft: {
     flexDirection: 'row',
@@ -709,7 +620,7 @@ const styles = StyleSheet.create({
   },
   accountRowName: {
     color: colors.textSecondary,
-    fontFamily: typography.fontMedium,
+    fontFamily: typography.fontBody,
     fontSize: 12,
   },
   accountRowNameActive: {
@@ -722,15 +633,16 @@ const styles = StyleSheet.create({
     fontSize: 9,
     letterSpacing: 1,
   },
+
+  // Logout Button
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#140A0D',
+    backgroundColor: '#14080A',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    paddingVertical: 12,
-    marginTop: 4,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+    paddingVertical: 13,
   },
   logoutBtnText: {
     color: COLOR_CARDINAL,
@@ -738,32 +650,36 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1,
   },
+
+  // Unauthenticated / Login Form Styles
   unauthBox: {
-    gap: 14,
+    gap: 16,
   },
   segmentRow: {
     flexDirection: 'row',
-    backgroundColor: '#12121A',
+    backgroundColor: '#0D0D14',
     borderWidth: 1,
-    borderColor: '#262630',
-    marginBottom: 4,
+    borderColor: '#22222E',
   },
   segmentTab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
   segmentTabActive: {
-    backgroundColor: colors.textPrimary,
+    backgroundColor: '#151522',
+    borderBottomColor: colors.accent,
   },
   segmentTabText: {
     color: colors.textMuted,
     fontFamily: typography.fontBold,
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 1,
   },
   segmentTabTextActive: {
-    color: colors.void,
+    color: colors.textPrimary,
   },
   errorBanner: {
     flexDirection: 'row',
@@ -775,32 +691,51 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: COLOR_CARDINAL,
-    fontFamily: typography.fontMedium,
-    fontSize: 11,
+    fontFamily: typography.fontBody,
+    fontSize: 12,
     flex: 1,
   },
   inputGroup: {
     gap: 6,
   },
   inputLabel: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     fontFamily: typography.fontBold,
-    fontSize: 9,
+    fontSize: 10,
     letterSpacing: 1,
   },
   input: {
-    backgroundColor: '#0E0E14',
+    backgroundColor: '#0D0D14',
     borderWidth: 1,
-    borderColor: '#262630',
+    borderColor: '#22222E',
     color: colors.textPrimary,
-    fontFamily: typography.fontMedium,
-    fontSize: 13,
+    fontFamily: typography.fontBody,
+    fontSize: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0D0D14',
+    borderWidth: 1,
+    borderColor: '#22222E',
+  },
+  passwordInput: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontFamily: typography.fontBody,
+    fontSize: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  eyeBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   submitBtn: {
-    backgroundColor: colors.textPrimary,
-    paddingVertical: 12,
+    backgroundColor: colors.accent,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
@@ -809,116 +744,33 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitBtnText: {
-    color: colors.void,
-    fontFamily: typography.fontBlack,
-    fontSize: 11,
-    letterSpacing: 1,
-  },
-  demoSection: {
-    marginTop: 10,
-    padding: 12,
-    backgroundColor: '#0E0E14',
-    borderWidth: 1,
-    borderColor: '#262630',
-  },
-  demoSectionTitle: {
-    color: colors.accent,
-    fontFamily: typography.fontBold,
-    fontSize: 10,
-    letterSpacing: 1,
-  },
-  demoSectionDesc: {
-    color: colors.textMuted,
-    fontFamily: typography.fontBody,
-    fontSize: 10,
-    marginTop: 3,
-    marginBottom: 8,
-  },
-  demoButtonsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  demoBtn: {
-    flex: 1,
-    backgroundColor: '#161622',
-    borderWidth: 1,
-    borderColor: '#2E2E40',
-    paddingVertical: 9,
-    alignItems: 'center',
-  },
-  demoBtnText: {
     color: colors.textPrimary,
-    fontFamily: typography.fontBold,
-    fontSize: 10,
-    letterSpacing: 0.8,
-  },
-  cloudConfigContainer: {
-    marginTop: 20,
-    marginBottom: 20,
-    backgroundColor: '#0E0E14',
-    borderWidth: 1,
-    borderColor: '#262630',
-  },
-  cloudConfigHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-  },
-  cloudConfigHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cloudConfigHeaderText: {
-    color: colors.textSecondary,
-    fontFamily: typography.fontBold,
-    fontSize: 10,
-    letterSpacing: 1,
-  },
-  cloudConfigBody: {
-    padding: 12,
-    borderTopWidth: 1,
-    borderColor: '#1E1E28',
-    gap: 12,
-  },
-  cloudConfigNotice: {
-    color: colors.textMuted,
-    fontFamily: typography.fontBody,
-    fontSize: 10,
-    lineHeight: 14,
-  },
-  cloudBtnRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-  },
-  cloudSaveBtn: {
-    flex: 1,
-    backgroundColor: colors.accent,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cloudSaveBtnText: {
-    color: colors.void,
     fontFamily: typography.fontBlack,
-    fontSize: 10,
-    letterSpacing: 1,
+    fontSize: 12,
+    letterSpacing: 1.5,
   },
-  cloudDisconnectBtn: {
-    paddingHorizontal: 12,
-    backgroundColor: '#1E1E28',
+  featuresCard: {
+    backgroundColor: '#0D0D14',
     borderWidth: 1,
-    borderColor: '#3A3A4A',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: '#22222E',
+    padding: 14,
+    gap: 8,
+    marginTop: 6,
   },
-  cloudDisconnectBtnText: {
-    color: COLOR_CARDINAL,
+  featuresTitle: {
+    color: colors.textMuted,
     fontFamily: typography.fontBold,
-    fontSize: 10,
-    letterSpacing: 0.8,
+    fontSize: 9,
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  featureText: {
+    color: colors.textSecondary,
+    fontFamily: typography.fontBody,
+    fontSize: 12,
   },
 });
-
-export default AccountModal;

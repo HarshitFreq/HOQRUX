@@ -11,6 +11,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { INITIAL_MEDIA_ITEMS } from '../mockData';
 import { POPULAR_ANIME_MAP } from './mapping/fribbAnime';
+import { API_CONFIG } from './config';
 
 export interface TmdbLogo {
   aspect_ratio: number;
@@ -48,9 +49,9 @@ export interface FetchTitleLogoOptions {
   preferPng?: boolean;
 }
 
-const TMDB_API_BASE = 'https://api.themoviedb.org/3';
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const DEFAULT_TMDB_API_KEY = '1cf50e6248dc270629e802686245c2c8';
+const TMDB_API_BASE = API_CONFIG.TMDB.BASE_URL;
+const TMDB_IMAGE_BASE = API_CONFIG.TMDB.IMAGE_BASE_URL;
+const DEFAULT_TMDB_API_KEY = API_CONFIG.TMDB.API_KEY;
 const CACHE_VERSION_PREFIX = '@hoqrux_logo_v2_';
 
 // ============================================================================

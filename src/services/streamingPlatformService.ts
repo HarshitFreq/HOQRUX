@@ -17,10 +17,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MediaItem } from './types';
 import { tmdbService } from './tmdb';
+import { API_CONFIG } from './api/config';
 
-const TMDB_API_BASE = 'https://api.themoviedb.org/3';
+const TMDB_API_BASE = API_CONFIG.TMDB.BASE_URL;
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const DEFAULT_TMDB_API_KEY = '1cf50e6248dc270629e802686245c2c8';
+const DEFAULT_TMDB_API_KEY = API_CONFIG.TMDB.API_KEY;
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes TTL
 const SUBSCRIPTIONS_KEY = '@hoqrux_user_subscriptions_v1';
 

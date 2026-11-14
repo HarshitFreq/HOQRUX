@@ -11,6 +11,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { TitleLogo } from './TitleLogo';
+import { API_CONFIG } from '../services/api/config';
 
 export interface DiscoveryItem {
   id: number;
@@ -33,9 +34,9 @@ export interface HomeDiscoveryWebData {
   fetchedAt: number;
 }
 
-const TMDB_API_BASE = 'https://api.themoviedb.org/3';
+const TMDB_API_BASE = API_CONFIG.TMDB.BASE_URL;
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const DEFAULT_API_KEY = '1cf50e6248dc270629e802686245c2c8';
+const DEFAULT_API_KEY = API_CONFIG.TMDB.API_KEY;
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes in milliseconds
 
 /**

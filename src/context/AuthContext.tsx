@@ -196,7 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     } catch (e: any) {
       setLoading(false);
-      return { success: false, error: e.message || 'Local login failed.' };
+      return { success: false, error: e.message || 'Sign in failed. Check your password.' };
     }
   }, [isCloudConnected]);
 
@@ -284,7 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     } catch (e: any) {
       setLoading(false);
-      return { success: false, error: e.message || 'Local registration failed.' };
+      return { success: false, error: e.message || 'Unable to create account.' };
     }
   }, [isCloudConnected]);
 

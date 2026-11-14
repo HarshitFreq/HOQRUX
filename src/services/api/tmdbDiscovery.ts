@@ -16,10 +16,11 @@ import { MediaItem } from '../types';
 import { tmdbService } from '../tmdb';
 import { INITIAL_MEDIA_ITEMS } from '../mockData';
 import { anilistService } from './anime/anilist';
+import { API_CONFIG } from './config';
 
-const TMDB_API_BASE = 'https://api.themoviedb.org/3';
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const DEFAULT_TMDB_API_KEY = '1cf50e6248dc270629e802686245c2c8';
+const TMDB_API_BASE = API_CONFIG.TMDB.BASE_URL;
+const TMDB_IMAGE_BASE = API_CONFIG.TMDB.IMAGE_BASE_URL;
+const DEFAULT_TMDB_API_KEY = API_CONFIG.TMDB.API_KEY;
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes in milliseconds
 
 const TMDB_GENRES: Record<number, string> = {

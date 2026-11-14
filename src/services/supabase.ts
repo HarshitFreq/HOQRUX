@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_CONFIG } from './api/config';
 
 const SUPABASE_CONFIG_KEY = '@hoqrux_supabase_config_v1';
 
@@ -8,8 +9,8 @@ let currentUrl: string | null = null;
 let currentAnonKey: string | null = null;
 
 // Built-in environment variables if set in .env or app config
-const ENV_SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const ENV_SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+const ENV_SUPABASE_URL = API_CONFIG.SUPABASE.URL;
+const ENV_SUPABASE_ANON_KEY = API_CONFIG.SUPABASE.ANON_KEY;
 
 /**
  * Initializes or re-initializes the Supabase client

@@ -2,10 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MediaItem, StreamingProvider, CollectionInfo, CollectionPart } from './types';
 import { INITIAL_MEDIA_ITEMS } from './mockData';
 import { storageService } from './storage';
+import { API_CONFIG } from './api/config';
 
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/';
-const TMDB_API_BASE = 'https://api.themoviedb.org/3';
-const DEFAULT_TMDB_KEY = '1cf50e6248dc270629e802686245c2c8';
+const TMDB_IMAGE_BASE = API_CONFIG.TMDB.IMAGE_BASE_URL;
+const TMDB_API_BASE = API_CONFIG.TMDB.BASE_URL;
+const DEFAULT_TMDB_KEY = API_CONFIG.TMDB.API_KEY;
 
 const TMDB_GENRES: Record<number, string> = {
   28: 'Action',

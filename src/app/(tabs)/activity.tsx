@@ -106,7 +106,7 @@ export default function ActivityScreen() {
                 ]}
               />
               <Text style={styles.accountBtnText}>
-                {isAuthenticated ? (user.username || 'ACCOUNT') : 'DATABASE'}
+                {isAuthenticated ? (user.username || 'ACCOUNT') : 'SIGN IN'}
               </Text>
             </TouchableOpacity>
 
