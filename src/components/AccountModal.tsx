@@ -243,9 +243,16 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                       Alert.alert('SYNC COMPLETE', 'All your watchlists, tracking, and logs are backed up.');
                     } else {
                       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                      const isSchemaError =
+                        res.message?.toLowerCase().includes('security policy') ||
+                        res.message?.toLowerCase().includes('schema') ||
+                        res.message?.toLowerCase().includes('sql') ||
+                        res.message?.toLowerCase().includes('row-level');
                       Alert.alert(
-                        'SYNC STATUS',
-                        res.message || 'Unable to sync with cloud right now. Your data remains safely stored locally.'
+                        isSchemaError ? 'CLOUD SETUP REQUIRED' : 'SYNC STATUS',
+                        isSchemaError
+                          ? 'To enable cross-device cloud sync, please execute the database SQL script in your Supabase SQL Editor.\n\nYour data is safely stored on this device.'
+                          : res.message || 'Unable to sync with cloud right now. Your data remains safely stored locally.'
                       );
                     }
                   }}

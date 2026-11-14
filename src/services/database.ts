@@ -37,6 +37,19 @@ function getUserKey(userId: string, type: 'tracking' | 'watchlists' | 'history' 
   return `@hoqrux_u_${safeId}_${type}_v2`;
 }
 
+function formatDbError(err: any): string {
+  if (!err) return 'Unknown error';
+  const msg = typeof err === 'string' ? err : err.message || '';
+  const code = err.code || '';
+  if (code === '42501' || msg.toLowerCase().includes('row-level security') || msg.toLowerCase().includes('security policy')) {
+    return 'Cloud database security policy prevented sync. Please run the updated SQL script in your Supabase SQL Editor.';
+  }
+  if (code === '22P02' || msg.toLowerCase().includes('invalid input syntax for type uuid')) {
+    return 'Cloud database requires TEXT user IDs. Please run the updated SQL script in your Supabase SQL Editor.';
+  }
+  return msg;
+}
+
 export const databaseService = {
   // ==========================================================================
   // User Session Management
@@ -412,12 +425,12 @@ export const databaseService = {
 
       if (error) {
         console.warn(`[Cloud Database] pushTitleTracking failed for ${titleId}:`, error);
-        return { success: false, error: error.message };
+        return { success: false, error: formatDbError(error) };
       }
       return { success: true };
     } catch (err: any) {
       console.warn('[Cloud Database] pushTitleTracking error:', err);
-      return { success: false, error: err?.message };
+      return { success: false, error: formatDbError(err) };
     }
   },
 
@@ -443,11 +456,11 @@ export const databaseService = {
 
       if (error) {
         console.warn(`[Cloud Database] pushWatchlist failed for ${list.id}:`, error);
-        return { success: false, error: error.message };
+        return { success: false, error: formatDbError(error) };
       }
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err?.message };
+      return { success: false, error: formatDbError(err) };
     }
   },
 
@@ -474,11 +487,11 @@ export const databaseService = {
 
       if (error) {
         console.warn(`[Cloud Database] pushHistoryEntry failed for ${entry.id}:`, error);
-        return { success: false, error: error.message };
+        return { success: false, error: formatDbError(error) };
       }
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err?.message };
+      return { success: false, error: formatDbError(err) };
     }
   },
 
@@ -558,7 +571,7 @@ export const databaseService = {
       const error = trackingRes.error || listsRes.error || historyRes.error || profileRes.error;
       if (error) {
         console.warn('[Cloud Database] Bulk upsert error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: formatDbError(error) };
       }
 
       return {
@@ -571,7 +584,7 @@ export const databaseService = {
       };
     } catch (err: any) {
       console.warn('[Cloud Database] Bulk sync exception:', err);
-      return { success: false, error: err?.message || 'Unknown network error' };
+      return { success: false, error: formatDbError(err) };
     }
   },
 
