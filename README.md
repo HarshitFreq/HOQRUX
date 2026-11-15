@@ -1,8 +1,23 @@
+<div align="center">
+
+<img src="./assets/app-logo.png" alt="HOQRUX Logo" width="110" />
+
 # HOQRUX
 
 **Swiss Brutalist Media Tracker // Local-First Personal Logbook**
 
 A high-performance, distraction-free logbook for tracking films and television series with instant local storage and silent background cloud synchronization.
+
+</div>
+
+---
+
+## Preview
+
+<div align="center">
+  <img src="./assets/screenshots/profile_stats.png" alt="HOQRUX Profile and Analytics Interface" width="380" />
+  <p><em>Swiss Brutalist Profile, Viewing Analytics, Cadence Tracking, and Identity View</em></p>
+</div>
 
 ---
 
