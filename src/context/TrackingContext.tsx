@@ -121,12 +121,19 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Helper persistence functions bound to the active user's isolated database space
   const persistTracking = useCallback(async (nextTracking: Record<string, UserTitleTracking>, titleId?: string) => {
     await databaseService.saveUserTracking(userId, nextTracking);
-    if (!user.isGuest && titleId && nextTracking[titleId]) {
-      databaseService.pushTitleTrackingToCloud(userId, titleId, nextTracking[titleId]).catch((err) => {
-        console.warn('[TrackingContext] Background title tracking push error:', err);
-      });
+    if (!user.isGuest) {
+      if (titleId && nextTracking[titleId]) {
+        databaseService.pushTitleTrackingToCloud(userId, titleId, nextTracking[titleId]).catch((err) => {
+          console.warn('[TrackingContext] Background title tracking push error:', err);
+        });
+      } else {
+        databaseService.pushAllToCloud(userId, nextTracking, watchlists, history, {
+          email: user.email,
+          username: user.username,
+        }).catch(() => {});
+      }
     }
-  }, [userId, user.isGuest]);
+  }, [userId, user.isGuest, watchlists, history, user.email, user.username]);
 
   const persistWatchlists = useCallback(async (nextLists: Watchlist[]) => {
     await databaseService.saveUserWatchlists(userId, nextLists);
@@ -140,12 +147,16 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [userId, user.isGuest, tracking, history, user.email, user.username]);
 
-  const persistHistory = useCallback(async (nextHistory: ViewingHistoryEntry[]) => {
+  const persistHistory = useCallback(async (nextHistory: ViewingHistoryEntry[], deletedHistoryId?: string) => {
     await databaseService.saveUserHistory(userId, nextHistory);
-    if (!user.isGuest && nextHistory.length > 0 && nextHistory[0]) {
-      databaseService.pushHistoryEntryToCloud(userId, nextHistory[0]).catch((err) => {
-        console.warn('[TrackingContext] Background history push error:', err);
-      });
+    if (!user.isGuest) {
+      if (deletedHistoryId) {
+        databaseService.deleteHistoryEntryFromCloud(userId, deletedHistoryId).catch(() => {});
+      } else if (nextHistory.length === 0) {
+        databaseService.clearHistoryFromCloud(userId).catch(() => {});
+      } else if (nextHistory[0]) {
+        databaseService.pushHistoryEntryToCloud(userId, nextHistory[0]).catch(() => {});
+      }
     }
   }, [userId, user.isGuest]);
 
@@ -363,7 +374,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const nextTracking = { ...tracking, [mediaItem.id]: nextRecord };
     setTracking(nextTracking);
-    await persistTracking(nextTracking);
+    await persistTracking(nextTracking, mediaItem.id);
 
     // Sync with system watchlists: add to completed, remove from watching and want to watch
     const nextLists = updateSystemWatchlistsForStatus(watchlists, mediaItem.id, 'completed');
@@ -431,7 +442,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const nextTracking = { ...tracking, [mediaItem.id]: nextRecord };
     setTracking(nextTracking);
-    await persistTracking(nextTracking);
+    await persistTracking(nextTracking, mediaItem.id);
 
     // Sync with system watchlists
     const nextLists = updateSystemWatchlistsForStatus(watchlists, mediaItem.id, nextStatus);
@@ -553,7 +564,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const nextTracking = { ...tracking, [mediaItem.id]: nextRecord };
     setTracking(nextTracking);
-    await persistTracking(nextTracking);
+    await persistTracking(nextTracking, mediaItem.id);
 
     // Sync with system watchlists
     const nextLists = updateSystemWatchlistsForStatus(watchlists, mediaItem.id, nextStatus);
@@ -626,7 +637,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const nextTracking = { ...tracking, [mediaItem.id]: nextRecord };
     setTracking(nextTracking);
-    await persistTracking(nextTracking);
+    await persistTracking(nextTracking, mediaItem.id);
 
     // Sync with system watchlists
     const nextLists = updateSystemWatchlistsForStatus(watchlists, mediaItem.id, nextStatus);
@@ -666,7 +677,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const nextTracking = { ...tracking, [mediaItem.id]: nextRecord };
     setTracking(nextTracking);
-    await persistTracking(nextTracking);
+    await persistTracking(nextTracking, mediaItem.id);
 
     // Sync with system watchlists (Watching / Want to Watch / Completed)
     const nextLists = updateSystemWatchlistsForStatus(watchlists, mediaItem.id, status);
@@ -707,7 +718,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
     const nextTracking = { ...tracking, [titleId]: nextRecord };
     setTracking(nextTracking);
-    await persistTracking(nextTracking);
+    await persistTracking(nextTracking, titleId);
   }, [tracking]);
 
   // Set personal review / notes
@@ -723,7 +734,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const nextRecord = { ...prev, review, updatedAt: new Date().toISOString() };
     const nextTracking = { ...tracking, [titleId]: nextRecord };
     setTracking(nextTracking);
-    await persistTracking(nextTracking);
+    await persistTracking(nextTracking, titleId);
   }, [tracking]);
 
   // Toggle favorite
@@ -739,7 +750,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const nextRecord = { ...prev, favorite: !prev.favorite, updatedAt: new Date().toISOString() };
     const nextTracking = { ...tracking, [titleId]: nextRecord };
     setTracking(nextTracking);
-    await persistTracking(nextTracking);
+    await persistTracking(nextTracking, titleId);
   }, [tracking]);
 
   // Toggle episode reminder
@@ -755,7 +766,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const nextRecord = { ...prev, reminderEnabled: !prev.reminderEnabled, updatedAt: new Date().toISOString() };
     const nextTracking = { ...tracking, [titleId]: nextRecord };
     setTracking(nextTracking);
-    await persistTracking(nextTracking);
+    await persistTracking(nextTracking, titleId);
   }, [tracking]);
 
   // Increment rewatch count
@@ -772,7 +783,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const nextRecord = { ...prev, rewatchCount: (prev.rewatchCount || 0) + 1, updatedAt: nowIso };
     const nextTracking = { ...tracking, [titleId]: nextRecord };
     setTracking(nextTracking);
-    await persistTracking(nextTracking);
+    await persistTracking(nextTracking, titleId);
 
     const item = resolveMediaItem(titleId);
     if (item) {
@@ -869,7 +880,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         },
       };
       setTracking(nextTracking);
-      await persistTracking(nextTracking);
+      await persistTracking(nextTracking, titleId);
 
       // If added to completed, record entry in viewing history
       if (targetStatus === 'completed') {
@@ -906,7 +917,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const removeHistoryItem = useCallback(async (historyId: string) => {
     const next = history.filter(h => h.id !== historyId);
     setHistory(next);
-    await persistHistory(next);
+    await persistHistory(next, historyId);
   }, [history, persistHistory]);
 
   // Compute stats

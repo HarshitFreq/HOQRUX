@@ -21,10 +21,12 @@ import { AccountModal } from '../../components/AccountModal';
 import { StatCard } from '../../components/StatCard';
 
 export default function ActivityScreen() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, signOut, savedAccounts, switchAccount } = useAuth();
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   const {
+    tracking,
+    watchlists,
     history,
     stats,
     clearHistory,
@@ -40,6 +42,25 @@ export default function ActivityScreen() {
       refreshTracking();
     }, [refreshTracking])
   );
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'SIGN OUT',
+      'Your watchlists and viewing history remain safely in your account. You can sign back in anytime to restore them.',
+      [
+        { text: 'CANCEL', style: 'cancel' },
+        {
+          text: 'SIGN OUT',
+          style: 'destructive',
+          onPress: async () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            await signOut();
+            await refreshTracking();
+          },
+        },
+      ]
+    );
+  };
 
   const handleClearHistory = () => {
     Alert.alert(
@@ -84,38 +105,148 @@ export default function ActivityScreen() {
     }
   };
 
+  const trackedCount = Object.keys(tracking || {}).length;
+  const listCount = watchlists?.length || 0;
+  const logCount = history?.length || 0;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Minimal Clean Header */}
+        {/* Minimal Clean Profile Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>LOGS</Text>
+          <Text style={styles.headerTitle}>PROFILE</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setIsAccountModalOpen(true);
-              }}
-              style={[styles.accountBtn, isAuthenticated && styles.accountBtnActive]}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  styles.accountDot,
-                  { backgroundColor: isAuthenticated ? '#10B981' : colors.accent },
-                ]}
-              />
-              <Text style={styles.accountBtnText}>
-                {isAuthenticated ? (user.username || 'ACCOUNT') : 'SIGN IN'}
-              </Text>
-            </TouchableOpacity>
-
-            {activeSegment === 'history' && history.length > 0 && (
-              <TouchableOpacity onPress={handleClearHistory} style={styles.clearBtn} activeOpacity={0.7}>
-                <Text style={styles.clearBtnText}>CLEAR ALL</Text>
+            {isAuthenticated ? (
+              <TouchableOpacity
+                onPress={handleSignOut}
+                style={styles.signOutHeaderBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="log-out-outline" size={14} color={colors.accent} style={{ marginRight: 4 }} />
+                <Text style={styles.signOutHeaderBtnText}>SIGN OUT</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setIsAccountModalOpen(true);
+                }}
+                style={styles.signInHeaderBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="log-in-outline" size={14} color={colors.accent} style={{ marginRight: 4 }} />
+                <Text style={styles.signInHeaderBtnText}>SIGN IN</Text>
               </TouchableOpacity>
             )}
           </View>
+        </View>
+
+        {/* Profile Details Card - Pure Typography, No Logo */}
+        <View style={styles.profileCard}>
+          {isAuthenticated ? (
+            <View style={styles.profileDetails}>
+              <View style={styles.profileHeaderRow}>
+                <View style={styles.nameBlock}>
+                  <Text style={styles.profileName}>{user.username || 'USER'}</Text>
+                  <Text style={styles.profileEmail}>{user.email}</Text>
+                </View>
+                <View style={styles.statusBadge}>
+                  <View style={styles.statusDotActive} />
+                  <Text style={styles.statusBadgeText}>ACTIVE</Text>
+                </View>
+              </View>
+
+              {/* Metrics Strip */}
+              <View style={styles.metricsBar}>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{trackedCount}</Text>
+                  <Text style={styles.metricLbl}>TITLES</Text>
+                </View>
+                <View style={styles.metricDivider} />
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{listCount}</Text>
+                  <Text style={styles.metricLbl}>LISTS</Text>
+                </View>
+                <View style={styles.metricDivider} />
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{logCount}</Text>
+                  <Text style={styles.metricLbl}>LOGS</Text>
+                </View>
+              </View>
+
+              {/* Saved accounts switcher if multiple profiles saved on device */}
+              {savedAccounts.length > 1 && (
+                <View style={styles.switcherBox}>
+                  <Text style={styles.switcherLabel}>SWITCH PROFILE:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.switcherScroll}>
+                    {savedAccounts.map((acc) => {
+                      const isCurrent = acc.id === user.id;
+                      return (
+                        <TouchableOpacity
+                          key={acc.id}
+                          style={[styles.accountPill, isCurrent && styles.accountPillActive]}
+                          onPress={async () => {
+                            if (!isCurrent) {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                              await switchAccount(acc.id);
+                              await refreshTracking();
+                            }
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.accountPillText, isCurrent && styles.accountPillTextActive]}>
+                            {acc.username || acc.email}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.guestDetails}>
+              <View style={styles.profileHeaderRow}>
+                <View style={styles.nameBlock}>
+                  <Text style={styles.profileName}>GUEST ACCOUNT</Text>
+                  <Text style={styles.profileEmail}>Tracking saved locally on this device</Text>
+                </View>
+                <View style={styles.statusBadge}>
+                  <View style={styles.statusDotGuest} />
+                  <Text style={styles.statusBadgeText}>LOCAL</Text>
+                </View>
+              </View>
+
+              {/* Metrics Strip */}
+              <View style={styles.metricsBar}>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{trackedCount}</Text>
+                  <Text style={styles.metricLbl}>TITLES</Text>
+                </View>
+                <View style={styles.metricDivider} />
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{listCount}</Text>
+                  <Text style={styles.metricLbl}>LISTS</Text>
+                </View>
+                <View style={styles.metricDivider} />
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{logCount}</Text>
+                  <Text style={styles.metricLbl}>LOGS</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.guestSignInBtn}
+                activeOpacity={0.8}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setIsAccountModalOpen(true);
+                }}
+              >
+                <Text style={styles.guestSignInBtnText}>SIGN IN / CREATE ACCOUNT →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Tabular Segment Switcher */}
@@ -147,6 +278,15 @@ export default function ActivityScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
+            {history.length > 0 && (
+              <View style={styles.logSubHeader}>
+                <Text style={styles.logSubHeaderText}>ACTIVITY LOGBOOK</Text>
+                <TouchableOpacity onPress={handleClearHistory} activeOpacity={0.7}>
+                  <Text style={styles.clearLogsLink}>CLEAR LOGS</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {history.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyTitle}>NO VIEWING HISTORY YET</Text>
@@ -272,7 +412,9 @@ export default function ActivityScreen() {
                 <Text style={styles.streakBadge}>{stats.streakDays}D STREAK</Text>
               </View>
               <Text style={styles.streakSubText}>
-                5 viewing sessions registered in the last 30 days.
+                {history.length > 0
+                  ? `${Math.min(history.length, 14)} viewing sessions registered.`
+                  : 'Start watching to build your cadence.'}
               </Text>
               <View style={styles.cadenceChart}>
                 {[40, 60, 20, 50, 30, 70, 15, 60, 80, 100, 45, 65, 85, 30].map(
@@ -355,7 +497,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   headerTitle: {
     fontFamily: typography.fontBlack,
@@ -369,52 +511,207 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  accountBtn: {
+  signOutHeaderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 5,
-    paddingHorizontal: 9,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: '#262630',
-    backgroundColor: '#0E0E14',
+    borderColor: '#3A1418',
+    backgroundColor: '#16080A',
     borderRadius: 2,
   },
-  accountBtnActive: {
-    borderColor: colors.accent,
-  },
-  accountDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  accountBtnText: {
+  signOutHeaderBtnText: {
     fontFamily: typography.fontBold,
-    color: colors.textPrimary,
+    color: colors.accent,
     fontSize: 9.5,
     letterSpacing: Platform.OS === 'ios' ? 1 : 0,
     includeFontPadding: false,
   },
-  clearBtn: {
-    paddingVertical: 6,
+  signInHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.accent,
+    backgroundColor: colors.surface,
     borderRadius: 2,
   },
-  clearBtnText: {
+  signInHeaderBtnText: {
     fontFamily: typography.fontBold,
-    color: colors.textMuted,
-    fontSize: 9,
+    color: colors.accent,
+    fontSize: 9.5,
     letterSpacing: Platform.OS === 'ios' ? 1 : 0,
     includeFontPadding: false,
   },
+
+  // Profile Details Card - Pure Brutalist Typography
+  profileCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 2,
+    padding: 14,
+    marginBottom: 14,
+  },
+  profileDetails: {
+    gap: 12,
+  },
+  guestDetails: {
+    gap: 12,
+  },
+  profileHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  nameBlock: {
+    flex: 1,
+  },
+  profileName: {
+    fontFamily: typography.fontBlack,
+    fontSize: 16,
+    color: colors.textPrimary,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    includeFontPadding: false,
+  },
+  profileEmail: {
+    fontFamily: typography.fontBody,
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 2,
+  },
+  statusDotActive: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+    marginRight: 5,
+  },
+  statusDotGuest: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.textMuted,
+    marginRight: 5,
+  },
+  statusBadgeText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.textSecondary,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    includeFontPadding: false,
+  },
+
+  // Metrics Bar
+  metricsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.void,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  metricItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  metricVal: {
+    fontFamily: typography.fontBlack,
+    fontSize: 16,
+    color: colors.textPrimary,
+    includeFontPadding: false,
+  },
+  metricLbl: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.textMuted,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    includeFontPadding: false,
+    marginTop: 2,
+  },
+  metricDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: colors.border,
+  },
+
+  // Profile Switcher
+  switcherBox: {
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 8,
+  },
+  switcherLabel: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.textMuted,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    includeFontPadding: false,
+    marginBottom: 6,
+  },
+  switcherScroll: {
+    flexDirection: 'row',
+  },
+  accountPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 2,
+    marginRight: 6,
+  },
+  accountPillActive: {
+    borderColor: colors.accent,
+    backgroundColor: '#1E0E12',
+  },
+  accountPillText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    color: colors.textMuted,
+  },
+  accountPillTextActive: {
+    color: colors.accent,
+  },
+
+  guestSignInBtn: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.surfaceElevated,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 2,
+  },
+  guestSignInBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 10,
+    color: colors.accent,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    includeFontPadding: false,
+  },
+
+  // Segment Container
   segmentContainer: {
     flexDirection: 'row',
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   segmentBtn: {
     flex: 1,
@@ -435,6 +732,29 @@ const styles = StyleSheet.create({
   segmentTextActive: {
     color: '#050507',
   },
+
+  logSubHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  logSubHeaderText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    color: colors.textMuted,
+    letterSpacing: Platform.OS === 'ios' ? 1.5 : 0,
+    includeFontPadding: false,
+  },
+  clearLogsLink: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    color: colors.accent,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    includeFontPadding: false,
+  },
+
   scrollList: {
     flex: 1,
   },
@@ -444,7 +764,7 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 70,
+    paddingVertical: 60,
   },
   emptyTitle: {
     fontFamily: typography.fontBlack,

@@ -31,14 +31,11 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
   const {
     user,
     isAuthenticated,
-    isCloudConnected,
-    cloudSyncStatus,
     savedAccounts,
     signIn,
     signUp,
     signOut,
     switchAccount,
-    triggerSync,
   } = useAuth();
 
   const { tracking, stats, watchlists, refreshTracking } = useTracking();
@@ -49,7 +46,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const resetForm = () => {
@@ -137,20 +133,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
     onClose();
   };
 
-  const getSyncBadgeLabel = () => {
-    if (!isCloudConnected) return 'OFFLINE // LOCAL ONLY';
-    switch (cloudSyncStatus) {
-      case 'synced':
-        return 'CLOUD BACKUP // SYNCED';
-      case 'syncing':
-        return 'SYNCING WITH CLOUD...';
-      case 'offline':
-        return 'OFFLINE // SAVED LOCALLY';
-      default:
-        return 'LOCAL ONLY';
-    }
-  };
-
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -177,32 +159,11 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
             {/* Authenticated View */}
             {isAuthenticated ? (
               <View style={styles.authenticatedBox}>
-                {/* User Profile Card */}
+                {/* User Profile Card - Pure Typography, No Logo */}
                 <View style={styles.userCard}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>
-                      {(user.username || user.email || 'U')[0].toUpperCase()}
-                    </Text>
-                  </View>
                   <View style={styles.userInfo}>
                     <Text style={styles.userName}>{user.username || 'USER'}</Text>
                     <Text style={styles.userEmail}>{user.email}</Text>
-                    <View style={styles.badgeRow}>
-                      <View
-                        style={[
-                          styles.statusDot,
-                          {
-                            backgroundColor:
-                              cloudSyncStatus === 'synced'
-                                ? COLOR_EMERALD
-                                : cloudSyncStatus === 'syncing'
-                                ? colors.accent
-                                : colors.textMuted,
-                          },
-                        ]}
-                      />
-                      <Text style={styles.badgeText}>{getSyncBadgeLabel()}</Text>
-                    </View>
                   </View>
                 </View>
 
@@ -227,46 +188,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                     <Text style={styles.metricLbl}>LOGS</Text>
                   </View>
                 </View>
-
-                {/* Cloud Sync Action */}
-                <TouchableOpacity
-                  style={[styles.syncBtn, isSyncing && { opacity: 0.6 }]}
-                  disabled={isSyncing}
-                  onPress={async () => {
-                    setIsSyncing(true);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    const res = await triggerSync();
-                    await refreshTracking();
-                    setIsSyncing(false);
-                    if (res.success) {
-                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                      Alert.alert('SYNC COMPLETE', 'All your watchlists, tracking, and logs are backed up.');
-                    } else {
-                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                      const isSchemaError =
-                        res.message?.toLowerCase().includes('security policy') ||
-                        res.message?.toLowerCase().includes('schema') ||
-                        res.message?.toLowerCase().includes('sql') ||
-                        res.message?.toLowerCase().includes('row-level');
-                      Alert.alert(
-                        isSchemaError ? 'CLOUD SETUP REQUIRED' : 'SYNC STATUS',
-                        isSchemaError
-                          ? 'To enable cross-device cloud sync, please execute the database SQL script in your Supabase SQL Editor.\n\nYour data is safely stored on this device.'
-                          : res.message || 'Unable to sync with cloud right now. Your data remains safely stored locally.'
-                      );
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  {isSyncing ? (
-                    <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 8 }} />
-                  ) : (
-                    <Ionicons name="cloud-upload-outline" size={16} color={colors.accent} style={{ marginRight: 8 }} />
-                  )}
-                  <Text style={styles.syncBtnText}>
-                    {isSyncing ? 'SYNCING DATA...' : 'SYNC WITH CLOUD'}
-                  </Text>
-                </TouchableOpacity>
 
                 {/* Saved Profiles Switcher (If multiple on device) */}
                 {savedAccounts.length > 1 && (

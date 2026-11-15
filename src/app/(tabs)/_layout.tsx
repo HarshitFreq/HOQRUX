@@ -104,11 +104,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="activity"
         options={{
-          title: 'LOGS',
-          tabBarLabel: createTabLabel('LOGS'),
+          title: 'PROFILE',
+          tabBarLabel: createTabLabel('PROFILE'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'time-sharp' : 'time-outline'}
+              name={focused ? 'person-sharp' : 'person-outline'}
               size={19}
               color={focused ? colors.accent : (color as string)}
             />

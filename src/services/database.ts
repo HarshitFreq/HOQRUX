@@ -496,6 +496,81 @@ export const databaseService = {
   },
 
   /**
+   * Deletes a specific viewing history entry from Supabase
+   */
+  async deleteHistoryEntryFromCloud(userId: string, historyId: string): Promise<boolean> {
+    const supabase = supabaseService.getClient();
+    if (!supabase || !userId || userId === 'guest') return false;
+    try {
+      await supabase
+        .from('user_history')
+        .delete()
+        .eq('user_id', userId)
+        .eq('history_id', historyId);
+      return true;
+    } catch (err) {
+      console.warn(`[Cloud Database] deleteHistoryEntry failed:`, err);
+      return false;
+    }
+  },
+
+  /**
+   * Clears all history entries for a user from Supabase
+   */
+  async clearHistoryFromCloud(userId: string): Promise<boolean> {
+    const supabase = supabaseService.getClient();
+    if (!supabase || !userId || userId === 'guest') return false;
+    try {
+      await supabase
+        .from('user_history')
+        .delete()
+        .eq('user_id', userId);
+      return true;
+    } catch (err) {
+      console.warn(`[Cloud Database] clearHistory failed:`, err);
+      return false;
+    }
+  },
+
+  /**
+   * Deletes a tracking record from Supabase
+   */
+  async deleteTitleTrackingFromCloud(userId: string, titleId: string): Promise<boolean> {
+    const supabase = supabaseService.getClient();
+    if (!supabase || !userId || userId === 'guest') return false;
+    try {
+      await supabase
+        .from('user_tracking')
+        .delete()
+        .eq('user_id', userId)
+        .eq('title_id', titleId);
+      return true;
+    } catch (err) {
+      console.warn(`[Cloud Database] deleteTitleTracking failed:`, err);
+      return false;
+    }
+  },
+
+  /**
+   * Deletes a watchlist from Supabase
+   */
+  async deleteWatchlistFromCloud(userId: string, listId: string): Promise<boolean> {
+    const supabase = supabaseService.getClient();
+    if (!supabase || !userId || userId === 'guest') return false;
+    try {
+      await supabase
+        .from('user_watchlists')
+        .delete()
+        .eq('user_id', userId)
+        .eq('list_id', listId);
+      return true;
+    } catch (err) {
+      console.warn(`[Cloud Database] deleteWatchlist failed:`, err);
+      return false;
+    }
+  },
+
+  /**
    * Pushes all local user data to cloud in bulk
    */
   async pushAllToCloud(
