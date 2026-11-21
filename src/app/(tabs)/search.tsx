@@ -11,6 +11,7 @@ import {
   Keyboard,
   Platform,
   BackHandler,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ import { MediaItem } from '../../services/types';
 import { PosterCard } from '../../components/PosterCard';
 import { typoCorrectionService } from '../../services/typoCorrection';
 import { useTracking } from '../../context/TrackingContext';
+import { storageService } from '../../services/storage';
 import {
   genreCatalogueService,
   GenreFormat,
@@ -30,19 +32,41 @@ import {
 
 const FORMAT_OPTIONS: { id: GenreFormat; label: string }[] = [
   { id: 'all', label: 'ALL' },
-  { id: 'movie', label: 'CINEMA' },
+  { id: 'movie', label: 'FILMS' },
   { id: 'tv', label: 'SERIES' },
   { id: 'anime', label: 'ANIME' },
 ];
 
-const SORT_OPTIONS: { id: GenreSort; label: string }[] = [
-  { id: 'popularity.desc', label: 'POPULAR' },
-  { id: 'vote_average.desc', label: 'TOP RATED' },
-  { id: 'primary_release_date.desc', label: 'NEWEST' },
+const SORT_OPTIONS: { id: GenreSort; label: string; shortLabel: string }[] = [
+  { id: 'popularity.desc', label: 'POPULAR', shortLabel: 'POPULAR' },
+  { id: 'vote_average.desc', label: 'TOP RATED', shortLabel: 'TOP RATED' },
+  { id: 'primary_release_date.desc', label: 'NEWEST', shortLabel: 'NEWEST' },
 ];
+
+const QUICK_TRENDING_PICKS = [
+  'Severance',
+  'Shōgun',
+  'Dark',
+  'Past Lives',
+  'Dune',
+  'Breaking Bad',
+  'Interstellar',
+  'Spirited Away',
+];
+
+const NUM_COLUMNS = 3;
+const HORIZONTAL_PADDING = 32;
+const GRID_GAP = 10;
 
 export default function ExploreScreen() {
   const { cacheMediaItem } = useTracking();
+  const { width: windowWidth } = useWindowDimensions();
+
+  // Dynamic 3-column poster dimensions
+  const cardWidth = useMemo(
+    () => Math.floor((windowWidth - HORIZONTAL_PADDING - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS),
+    [windowWidth]
+  );
 
   // Universal Search State
   const [query, setQuery] = useState('');
@@ -53,6 +77,9 @@ export default function ExploreScreen() {
   const [searchPage, setSearchPage] = useState(1);
   const [hasMoreSearch, setHasMoreSearch] = useState(true);
   const [isLoadingMoreSearch, setIsLoadingMoreSearch] = useState(false);
+
+  // Recent Searches State
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   // API-Driven Genre Catalogue State
   const genreList = useMemo(() => genreCatalogueService.getGenreList(), []);
@@ -71,10 +98,14 @@ export default function ExploreScreen() {
     cacheMediaItemRef.current = cacheMediaItem;
   }, [cacheMediaItem]);
 
-
+  // Load Recent Searches on mount
+  useEffect(() => {
+    storageService.getRecentSearches().then((list) => {
+      setRecentSearches(list);
+    });
+  }, []);
 
   // Fetch Genre Catalogue via API
-  // Load / Update Genre Data on tab or filter change
   useEffect(() => {
     let isMounted = true;
     genreCatalogueService
@@ -194,6 +225,13 @@ export default function ExploreScreen() {
           setIsSearching(false);
           setSearchPage(1);
           setHasMoreSearch(results.length >= 20);
+
+          // Save to recent searches if there are results
+          if (results.length > 0) {
+            storageService.saveRecentSearch(cleanQ).then((updated) => {
+              setRecentSearches(updated);
+            });
+          }
         }
       } catch (err) {
         console.warn('Universal search error:', err);
@@ -268,7 +306,7 @@ export default function ExploreScreen() {
     Keyboard.dismiss();
   };
 
-  // Android Hardware Back Button: Clear active search before leaving
+  // Android Hardware Back Button: Clear active search or unfocus before leaving
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const onBackPress = () => {
@@ -276,11 +314,16 @@ export default function ExploreScreen() {
         handleClearQuery();
         return true;
       }
+      if (isInputFocused) {
+        searchBarRef.current?.blur();
+        setIsInputFocused(false);
+        return true;
+      }
       return false;
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
-  }, [query]);
+  }, [query, isInputFocused]);
 
   const applySuggestion = (s: string) => {
     Haptics.selectionAsync();
@@ -303,11 +346,13 @@ export default function ExploreScreen() {
     setSelectedFormat(fmt);
   };
 
-  const handleSelectSort = (srt: GenreSort) => {
-    if (srt === selectedSort) return;
+  // Cycle through Sort Options on tap
+  const handleCycleSort = () => {
     Haptics.selectionAsync();
     setIsLoadingGenre(true);
-    setSelectedSort(srt);
+    const currentIndex = SORT_OPTIONS.findIndex((s) => s.id === selectedSort);
+    const nextIndex = (currentIndex + 1) % SORT_OPTIONS.length;
+    setSelectedSort(SORT_OPTIONS[nextIndex].id);
   };
 
   const isFilterDirty =
@@ -323,7 +368,24 @@ export default function ExploreScreen() {
     setIsLoadingGenre(true);
   };
 
+  const handleRemoveRecentSearch = async (term: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const updated = await storageService.removeRecentSearch(term);
+    setRecentSearches(updated);
+  };
+
+  const handleClearAllRecentSearches = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await storageService.clearRecentSearches();
+    setRecentSearches([]);
+  };
+
   const isSearchActive = query.trim().length > 0;
+  const showRecentSearchesOverlay =
+    isInputFocused && !isSearchActive && (recentSearches.length > 0 || QUICK_TRENDING_PICKS.length > 0);
+
+  const currentSortLabel =
+    SORT_OPTIONS.find((s) => s.id === selectedSort)?.label || 'POPULAR';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -350,16 +412,23 @@ export default function ExploreScreen() {
           <TextInput
             ref={searchBarRef}
             style={styles.searchInput}
-            placeholder="Search films, series, anime, genres..."
+            placeholder="Search films, series, anime, directors..."
             placeholderTextColor={colors.textMuted}
             value={query}
             onChangeText={handleQueryChange}
             onFocus={() => setIsInputFocused(true)}
-            onBlur={() => setIsInputFocused(false)}
+            onBlur={() => {
+              setTimeout(() => setIsInputFocused(false), 250);
+            }}
             autoCorrect={false}
             spellCheck={false}
             returnKeyType="search"
-            onSubmitEditing={() => Keyboard.dismiss()}
+            onSubmitEditing={() => {
+              if (query.trim()) {
+                storageService.saveRecentSearch(query.trim()).then(setRecentSearches);
+              }
+              Keyboard.dismiss();
+            }}
           />
           {query.length > 0 && (
             <TouchableOpacity
@@ -397,8 +466,77 @@ export default function ExploreScreen() {
         )}
       </View>
 
-      {/* 2. BODY CONTENT: CONDITIONAL SEARCH RESULTS VS. API GENRE CATALOGUE */}
-      {isSearchActive ? (
+      {/* 2. RECENT SEARCHES OVERLAY (When search is focused but empty) */}
+      {showRecentSearchesOverlay ? (
+        <ScrollView
+          style={styles.recentOverlay}
+          keyboardShouldPersistTaps="always"
+          showsVerticalScrollIndicator={false}
+        >
+          {recentSearches.length > 0 && (
+            <View style={styles.recentSection}>
+              <View style={styles.recentSectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <Ionicons name="time-outline" size={13} color={colors.accent} style={{ marginRight: 6 }} />
+                  <Text style={styles.recentSectionTitle}>RECENT SEARCHES</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleClearAllRecentSearches}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.clearAllText}>CLEAR ALL</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.recentChipsWrap}>
+                {recentSearches.map((item) => (
+                  <View key={item} style={styles.recentChip}>
+                    <TouchableOpacity
+                      style={styles.recentChipMain}
+                      activeOpacity={0.7}
+                      onPress={() => applySuggestion(item)}
+                    >
+                      <Text style={styles.recentChipText} numberOfLines={1}>
+                        {item}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.recentChipRemove}
+                      onPress={() => handleRemoveRecentSearch(item)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="close" size={11} color={colors.textMuted} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <View style={styles.recentSection}>
+            <View style={styles.recentSectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="trending-up" size={13} color={colors.accent} style={{ marginRight: 6 }} />
+                <Text style={styles.recentSectionTitle}>POPULAR DISCOVERIES</Text>
+              </View>
+            </View>
+
+            <View style={styles.recentChipsWrap}>
+              {QUICK_TRENDING_PICKS.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={styles.trendingChip}
+                  activeOpacity={0.7}
+                  onPress={() => applySuggestion(item)}
+                >
+                  <Text style={styles.trendingChipText}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      ) : isSearchActive ? (
         // ========================================================
         // UNIVERSAL SEARCH RESULTS VIEW
         // ========================================================
@@ -436,8 +574,8 @@ export default function ExploreScreen() {
           <FlatList
             data={searchResults}
             keyExtractor={(item) => item.id}
-            numColumns={3}
-            renderItem={({ item }) => <PosterCard item={item} width={106} showProgress={false} />}
+            numColumns={NUM_COLUMNS}
+            renderItem={({ item }) => <PosterCard item={item} width={cardWidth} showProgress={false} />}
             columnWrapperStyle={styles.gridRow}
             contentContainerStyle={styles.searchGridContent}
             showsVerticalScrollIndicator={false}
@@ -452,7 +590,7 @@ export default function ExploreScreen() {
                     ? 'SEARCHING...'
                     : `${searchResults.length} RESULTS${
                         selectedFormat !== 'all'
-                          ? ` // ${FORMAT_OPTIONS.find((f) => f.id === selectedFormat)?.label}`
+                          ? ` · ${FORMAT_OPTIONS.find((f) => f.id === selectedFormat)?.label}`
                           : ''
                       }`}
                 </Text>
@@ -504,45 +642,12 @@ export default function ExploreScreen() {
         </View>
       ) : (
         // ========================================================
-        // API-DRIVEN GENRE CATALOGUE VIEW (ONLY CONTENT)
+        // STREAMLINED GENRE & DISCOVERY CATALOGUE VIEW
         // ========================================================
         <View style={styles.genreCatalogueContainer}>
-          {/* A. Horizontal Genre Selector Tabs */}
-          <View style={styles.genreTabsWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.genreTabsRow}
-            >
-              {genreList.map((g) => {
-                const isActive = selectedGenreId.toUpperCase() === g.id.toUpperCase();
-                return (
-                  <TouchableOpacity
-                    key={g.id}
-                    onPress={() => handleSelectGenre(g.id)}
-                    style={[styles.genreTabBtn, isActive && styles.genreTabBtnActive]}
-                    activeOpacity={0.75}
-                  >
-                    {isActive && <View style={styles.activeDot} />}
-                    <Text
-                      style={[
-                        styles.genreTabText,
-                        isActive ? styles.genreTabTextActive : styles.genreTabTextInactive,
-                      ]}
-                      allowFontScaling={true}
-                      maxFontSizeMultiplier={1.2}
-                    >
-                      {g.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* B. Two-Tier Filter Controls: Segmented Format + Sort Controls */}
-          <View style={styles.filterSection}>
-            {/* Tier 1: Format Controller: 4-Way Segmented Bar */}
+          {/* STREAMLINED FILTER CONTROL: 2 SLEEK ROWS INSTEAD OF 3 CLUTTERED TIERS */}
+          <View style={styles.streamlinedFilterSection}>
+            {/* Row 1: 4-Way Segmented Format Rail */}
             <View style={styles.segmentedContainer}>
               {FORMAT_OPTIONS.map((fmt, idx) => {
                 const isActive = selectedFormat === fmt.id;
@@ -570,57 +675,101 @@ export default function ExploreScreen() {
               })}
             </View>
 
-            {/* Tier 2: Sort Switcher & Active Filter Reset */}
-            <View style={styles.sortBar}>
-              <View style={styles.sortOptionsGroup}>
-                <Text style={styles.sortLabel}>SORT //</Text>
-                {SORT_OPTIONS.map((srt) => {
-                  const isActive = selectedSort === srt.id;
+            {/* Row 2: Clean Combined Sort Toggle + Horizontal Genre Rail */}
+            <View style={styles.genreAndSortRow}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.genreAndSortContent}
+              >
+                {/* 1. Cycle Sort Pill */}
+                <TouchableOpacity
+                  style={[
+                    styles.cycleSortPill,
+                    selectedSort !== 'popularity.desc' && styles.cycleSortPillActive,
+                  ]}
+                  onPress={handleCycleSort}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons
+                    name="swap-vertical-outline"
+                    size={11}
+                    color={selectedSort !== 'popularity.desc' ? colors.accent : colors.textSecondary}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={[
+                      styles.cycleSortText,
+                      selectedSort !== 'popularity.desc' && styles.cycleSortTextActive,
+                    ]}
+                  >
+                    {currentSortLabel}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* 2. Reset Filter Chip (If any filter changed) */}
+                {isFilterDirty && (
+                  <TouchableOpacity
+                    style={styles.inlineResetBtn}
+                    onPress={handleResetFilters}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="close" size={11} color={colors.accent} style={{ marginRight: 2 }} />
+                    <Text style={styles.inlineResetText}>RESET</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Vertical Divider in Rail */}
+                <View style={styles.railDivider} />
+
+                {/* 3. Genre Pills */}
+                {genreList.map((g) => {
+                  const isActive = selectedGenreId.toUpperCase() === g.id.toUpperCase();
                   return (
                     <TouchableOpacity
-                      key={srt.id}
-                      style={[styles.sortPill, isActive && styles.sortPillActive]}
-                      onPress={() => handleSelectSort(srt.id)}
-                      activeOpacity={0.7}
+                      key={g.id}
+                      onPress={() => handleSelectGenre(g.id)}
+                      style={[styles.genrePill, isActive && styles.genrePillActive]}
+                      activeOpacity={0.75}
                     >
                       <Text
-                        style={[styles.sortPillText, isActive && styles.sortPillTextActive]}
+                        style={[
+                          styles.genrePillText,
+                          isActive ? styles.genrePillTextActive : styles.genrePillTextInactive,
+                        ]}
                         allowFontScaling={true}
                         maxFontSizeMultiplier={1.2}
                       >
-                        {srt.label}
+                        {g.name}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
-              </View>
-
-              {isFilterDirty && (
-                <TouchableOpacity
-                  style={styles.resetBtn}
-                  onPress={handleResetFilters}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="close" size={11} color={colors.accent} style={{ marginRight: 2 }} />
-                  <Text style={styles.resetBtnText}>RESET</Text>
-                </TouchableOpacity>
-              )}
+              </ScrollView>
             </View>
           </View>
 
-          {/* C. 3-Column API Genre Catalogue Grid */}
+          {/* 3-Column API Catalogue Grid with Dynamic Card Width */}
           {isLoadingGenre ? (
             <View style={styles.skeletonGrid}>
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <View key={i} style={styles.skeletonCard} />
+                <View
+                  key={i}
+                  style={[
+                    styles.skeletonCard,
+                    { width: cardWidth, height: cardWidth * 1.5 },
+                  ]}
+                />
               ))}
             </View>
           ) : (
             <FlatList
               data={genreItems}
               keyExtractor={(item, index) => `${item.id}-${index}`}
-              numColumns={3}
-              renderItem={({ item }) => <PosterCard item={item} width={106} showProgress={false} />}
+              numColumns={NUM_COLUMNS}
+              renderItem={({ item }) => (
+                <PosterCard item={item} width={cardWidth} showProgress={false} />
+              )}
               columnWrapperStyle={styles.gridRow}
               contentContainerStyle={styles.catalogueGridContent}
               showsVerticalScrollIndicator={false}
@@ -698,6 +847,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: 12,
     height: 42,
+    borderRadius: 2,
   },
   searchBarFocused: {
     borderColor: colors.accent,
@@ -729,15 +879,213 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: 2,
   },
   suggestionPillText: {
     fontFamily: typography.fontMedium,
     fontSize: 11,
     color: colors.textSecondary,
   },
+
+  // Recent Searches & Trending Overlay
+  recentOverlay: {
+    flex: 1,
+    backgroundColor: colors.void,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  recentSection: {
+    marginBottom: 24,
+  },
+  recentSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recentSectionTitle: {
+    fontFamily: typography.fontBold,
+    fontSize: 10.5,
+    letterSpacing: 1.2,
+    color: colors.textPrimary,
+  },
+  clearAllText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    letterSpacing: 0.8,
+    color: colors.accent,
+  },
+  recentChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  recentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  recentChipMain: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  recentChipText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 11.5,
+    color: colors.textSecondary,
+  },
+  recentChipRemove: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
+  },
+  trendingChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 2,
+  },
+  trendingChipText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 11.5,
+    color: colors.textSecondary,
+  },
+
+  // Streamlined Filter Section
+  streamlinedFilterSection: {
+    backgroundColor: colors.void,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  segmentedContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  segmentBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+  },
+  segmentBtnActive: {
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+    borderBottomWidth: 2,
+    borderBottomColor: colors.accent,
+  },
+  segmentBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 10.5,
+    letterSpacing: 0.8,
+    color: colors.textSecondary,
+  },
+  segmentBtnTextActive: {
+    color: colors.accent,
+  },
+  genreAndSortRow: {
+    paddingVertical: 8,
+  },
+  genreAndSortContent: {
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cycleSortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 2,
+  },
+  cycleSortPillActive: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+  },
+  cycleSortText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    letterSpacing: 0.6,
+    color: colors.textSecondary,
+  },
+  cycleSortTextActive: {
+    color: colors.accent,
+  },
+  inlineResetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 2,
+  },
+  inlineResetText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    letterSpacing: 0.8,
+    color: colors.accent,
+  },
+  railDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: colors.border,
+    marginHorizontal: 3,
+  },
+  genrePill: {
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 2,
+  },
+  genrePillActive: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+  },
+  genrePillText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    letterSpacing: 0.6,
+  },
+  genrePillTextActive: {
+    color: colors.accent,
+  },
+  genrePillTextInactive: {
+    color: colors.textSecondary,
+  },
+
+  // Grid & Content
   gridRow: {
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 12,
+  },
+  searchContainer: {
+    flex: 1,
+  },
+  searchFormatBar: {
+    backgroundColor: colors.void,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   searchGridContent: {
     paddingHorizontal: 16,
@@ -757,157 +1105,22 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     color: colors.accent,
   },
-  genreCatalogueContainer: {
-    flex: 1,
-  },
-  genreTabsWrapper: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.void,
-  },
-  genreTabsRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  genreTabBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  genreTabBtnActive: {
-    backgroundColor: colors.surfaceElevated,
-    borderColor: colors.accent,
-  },
-  activeDot: {
-    width: 4,
-    height: 4,
-    backgroundColor: colors.accent,
-    marginRight: 6,
-  },
-  genreTabText: {
-    fontFamily: typography.fontBold,
-    fontSize: 10.5,
-    letterSpacing: 0.8,
-  },
-  genreTabTextActive: {
-    color: colors.textPrimary,
-  },
-  genreTabTextInactive: {
-    color: colors.textSecondary,
-  },
-  searchContainer: {
-    flex: 1,
-  },
-  searchFormatBar: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-    backgroundColor: colors.void,
-  },
-  segmentedContainer: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  segmentBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-  },
-  segmentBtnActive: {
-    backgroundColor: 'rgba(229, 9, 20, 0.12)',
-    borderBottomWidth: 2,
-    borderBottomColor: colors.accent,
-  },
-  segmentBtnText: {
-    fontFamily: typography.fontBold,
-    fontSize: 10,
-    letterSpacing: 0.8,
-    color: colors.textSecondary,
-  },
-  segmentBtnTextActive: {
-    color: colors.accent,
-  },
-  filterSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.void,
-    gap: 8,
-  },
-  sortBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sortOptionsGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sortLabel: {
-    fontFamily: typography.fontBold,
-    fontSize: 9,
-    letterSpacing: 1,
-    color: colors.textMuted,
-  },
-  sortPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sortPillActive: {
-    borderColor: colors.accent,
-    backgroundColor: 'rgba(229, 9, 20, 0.12)',
-  },
-  sortPillText: {
-    fontFamily: typography.fontBold,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    color: colors.textMuted,
-  },
-  sortPillTextActive: {
-    color: colors.accent,
-  },
-  resetBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    backgroundColor: 'rgba(229, 9, 20, 0.1)',
-    borderWidth: 1,
-    borderColor: colors.accent,
-  },
-  resetBtnText: {
-    fontFamily: typography.fontBold,
-    fontSize: 9,
-    letterSpacing: 0.8,
-    color: colors.accent,
-  },
   clearFormatBtn: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
+    borderRadius: 2,
   },
   clearFormatText: {
     fontFamily: typography.fontBold,
     fontSize: 9,
     letterSpacing: 0.8,
     color: colors.textSecondary,
+  },
+  genreCatalogueContainer: {
+    flex: 1,
   },
   catalogueGridContent: {
     paddingHorizontal: 16,
@@ -922,12 +1135,11 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   skeletonCard: {
-    width: 106,
-    height: 159,
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 14,
+    marginBottom: 12,
+    borderRadius: 3,
   },
   footerLoader: {
     flexDirection: 'row',
@@ -979,6 +1191,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.accent,
     backgroundColor: 'rgba(229, 9, 20, 0.12)',
+    borderRadius: 2,
   },
   emptyResetBtnText: {
     fontFamily: typography.fontBold,

@@ -48,6 +48,7 @@ const KEYS = {
   MAL_CLIENT_ID: '@hoqrux_mal_key_v1',
   SETTINGS: '@hoqrux_settings_v1',
   MEDIA_CACHE: '@hoqrux_media_cache_v1',
+  RECENT_SEARCHES: '@hoqrux_recent_searches_v1',
 };
 
 export const storageService = {
@@ -275,5 +276,48 @@ export const storageService = {
     try {
       await AsyncStorage.setItem(KEYS.MEDIA_CACHE, JSON.stringify(cache));
     } catch (e) { console.error('Failed to save media cache', e); }
+  },
+
+  // Recent Searches
+  async getRecentSearches(): Promise<string[]> {
+    try {
+      const data = await AsyncStorage.getItem(KEYS.RECENT_SEARCHES);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async saveRecentSearch(term: string): Promise<string[]> {
+    try {
+      const clean = term.trim();
+      if (!clean) return await this.getRecentSearches();
+      const current = await this.getRecentSearches();
+      const filtered = current.filter((s) => s.toLowerCase() !== clean.toLowerCase());
+      const updated = [clean, ...filtered].slice(0, 10);
+      await AsyncStorage.setItem(KEYS.RECENT_SEARCHES, JSON.stringify(updated));
+      return updated;
+    } catch {
+      return [];
+    }
+  },
+
+  async removeRecentSearch(term: string): Promise<string[]> {
+    try {
+      const current = await this.getRecentSearches();
+      const updated = current.filter((s) => s.toLowerCase() !== term.toLowerCase());
+      await AsyncStorage.setItem(KEYS.RECENT_SEARCHES, JSON.stringify(updated));
+      return updated;
+    } catch {
+      return [];
+    }
+  },
+
+  async clearRecentSearches(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(KEYS.RECENT_SEARCHES);
+    } catch (e) {
+      console.error('Failed to clear recent searches', e);
+    }
   },
 };
