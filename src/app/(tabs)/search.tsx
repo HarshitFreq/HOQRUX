@@ -21,6 +21,7 @@ import { typography } from '../../theme/typography';
 import { mediaEngine } from '../../services/api/mediaEngine';
 import { MediaItem } from '../../services/types';
 import { PosterCard } from '../../components/PosterCard';
+import { RandomPickerModal } from '../../components/RandomPickerModal';
 import { typoCorrectionService } from '../../services/typoCorrection';
 import { useTracking } from '../../context/TrackingContext';
 import { storageService } from '../../services/storage';
@@ -91,6 +92,7 @@ export default function ExploreScreen() {
   const [isLoadingGenre, setIsLoadingGenre] = useState(true);
   const [isLoadingMoreGenre, setIsLoadingMoreGenre] = useState(false);
   const [hasMoreGenre, setHasMoreGenre] = useState(true);
+  const [isRandomModalOpen, setIsRandomModalOpen] = useState(false);
 
   const searchBarRef = useRef<any>(null);
   const cacheMediaItemRef = useRef(cacheMediaItem);
@@ -399,6 +401,18 @@ export default function ExploreScreen() {
           >
             EXPLORE
           </Text>
+
+          <TouchableOpacity
+            style={styles.randomBtn}
+            activeOpacity={0.8}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsRandomModalOpen(true);
+            }}
+          >
+            <Ionicons name="dice-outline" size={13} color={colors.accent} style={{ marginRight: 5 }} />
+            <Text style={styles.randomBtnText}>SURPRISE ME</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Swiss Brutalist Search Input */}
@@ -809,6 +823,13 @@ export default function ExploreScreen() {
           )}
         </View>
       )}
+
+      {/* Random Recommendation Modal ("Surprise Me") */}
+      <RandomPickerModal
+        visible={isRandomModalOpen}
+        onClose={() => setIsRandomModalOpen(false)}
+        exploreItems={genreItems}
+      />
     </SafeAreaView>
   );
 }
@@ -836,6 +857,23 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontBlack,
     fontSize: 20,
     letterSpacing: Platform.OS === 'ios' ? 2 : 0,
+    color: colors.textPrimary,
+    includeFontPadding: false,
+  },
+  randomBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5.5,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 2,
+  },
+  randomBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 10,
+    letterSpacing: 0.8,
     color: colors.textPrimary,
     includeFontPadding: false,
   },
