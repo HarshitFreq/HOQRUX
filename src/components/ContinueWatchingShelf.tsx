@@ -18,6 +18,7 @@ import {
   Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -25,6 +26,8 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { MediaItem } from '../services/types';
 import { useTracking } from '../context/TrackingContext';
+import { NativeTitleLogo } from './NativeTitleLogo';
+import { getCanonicalMediaType } from '../services/api/tmdbLogo';
 
 interface ContinueWatchingShelfProps {
   items: MediaItem[];
@@ -148,6 +151,25 @@ export const ContinueWatchingShelf: React.FC<ContinueWatchingShelfProps> = memo(
                 {/* Subtle dark gradient overlay */}
                 <View style={styles.cardGradientOverlay} />
 
+                {/* Bottom gradient vignette for logo contrast */}
+                <LinearGradient
+                  colors={['transparent', 'rgba(5, 5, 7, 0.4)', 'rgba(5, 5, 7, 0.88)']}
+                  style={styles.logoGradientOverlay}
+                />
+
+                {/* Overlaid Title Treatment Logo */}
+                <View style={styles.thumbnailLogoContainer} pointerEvents="none">
+                  <NativeTitleLogo
+                    mediaType={getCanonicalMediaType(item)}
+                    id={item.tmdbId || item.id}
+                    title={item.title}
+                    originalLanguage={item.originalLanguage}
+                    maxHeight={26}
+                    containerStyle={styles.thumbnailLogo}
+                    fallbackTextStyle={styles.thumbnailFallbackTitle}
+                  />
+                </View>
+
                 {/* Top Right Pill: e.g. 42% or Film */}
                 <View style={styles.cardRatioBadge}>
                   <Text
@@ -191,7 +213,9 @@ export const ContinueWatchingShelf: React.FC<ContinueWatchingShelfProps> = memo(
                     allowFontScaling={true}
                     maxFontSizeMultiplier={1.25}
                   >
-                    {item.title}
+                    {isMovie
+                      ? item.title
+                      : `S${currentSeason} · E${nextEp}${epData?.title ? ` / ${epData.title}` : ''}`}
                   </Text>
                   <Text
                     style={styles.episodeTitle}
@@ -201,7 +225,7 @@ export const ContinueWatchingShelf: React.FC<ContinueWatchingShelfProps> = memo(
                   >
                     {isMovie
                       ? `${item.releaseYear} • Want to Watch`
-                      : `S${currentSeason} · E${nextEp} ${epData?.title ? `/ ${epData.title}` : ''}`}
+                      : item.title}
                   </Text>
                 </TouchableOpacity>
 
@@ -323,6 +347,35 @@ const styles = StyleSheet.create({
   cardGradientOverlay: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5, 5, 7, 0.28)',
+  },
+  logoGradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+  },
+  thumbnailLogoContainer: {
+    position: 'absolute',
+    bottom: 8,
+    left: 10,
+    maxWidth: 160,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-start',
+  },
+  thumbnailLogo: {
+    maxWidth: 160,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-start',
+  },
+  thumbnailFallbackTitle: {
+    fontFamily: typography.fontBlack,
+    fontSize: 11,
+    color: '#FFFFFF',
+    letterSpacing: Platform.OS === 'ios' ? 0.5 : 0,
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   cardTopBadge: {
     position: 'absolute',
