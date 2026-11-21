@@ -14,7 +14,7 @@ import { MediaItem } from './types';
 import { tmdbService } from './tmdb';
 import { INITIAL_MEDIA_ITEMS } from './mockData';
 
-export type GenreFormat = 'all' | 'movie' | 'tv';
+export type GenreFormat = 'all' | 'movie' | 'tv' | 'anime';
 export type GenreSort = 'popularity.desc' | 'vote_average.desc' | 'primary_release_date.desc';
 
 export interface GenreDefinition {
@@ -145,7 +145,9 @@ export const genreCatalogueService = {
               ? true
               : format === 'movie'
               ? it.type === 'movie'
-              : it.type === 'tv' || it.type === 'anime';
+              : format === 'tv'
+              ? it.type === 'tv'
+              : it.type === 'anime';
           const matchGenre = matchesGenreFallback(it.genres, genreId);
           return matchFormat && matchGenre;
         });
@@ -172,7 +174,17 @@ export const genreCatalogueService = {
       console.warn(`[GenreCatalogueService] Fetch failed for ${genreId}:`, err);
       // Fallback
       if (page === 1) {
-        return INITIAL_MEDIA_ITEMS.filter((it) => matchesGenreFallback(it.genres, genreId));
+        return INITIAL_MEDIA_ITEMS.filter((it) => {
+          const matchFormat =
+            format === 'all'
+              ? true
+              : format === 'movie'
+              ? it.type === 'movie'
+              : format === 'tv'
+              ? it.type === 'tv'
+              : it.type === 'anime';
+          return matchFormat && matchesGenreFallback(it.genres, genreId);
+        });
       }
       return [];
     }

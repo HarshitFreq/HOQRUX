@@ -28,9 +28,10 @@ import {
 } from '../../services/genreCatalogueService';
 
 const FORMAT_OPTIONS: { id: GenreFormat; label: string }[] = [
-  { id: 'all', label: 'ALL FORMATS' },
+  { id: 'all', label: 'ALL' },
   { id: 'movie', label: 'CINEMA' },
   { id: 'tv', label: 'SERIES' },
+  { id: 'anime', label: 'ANIME' },
 ];
 
 const SORT_OPTIONS: { id: GenreSort; label: string }[] = [
@@ -170,9 +171,18 @@ export default function ExploreScreen() {
     const timer = setTimeout(async () => {
       if (isMounted) setIsSearching(true);
       try {
+        const category =
+          selectedFormat === 'movie'
+            ? 'movies'
+            : selectedFormat === 'tv'
+            ? 'series'
+            : selectedFormat === 'anime'
+            ? 'anime'
+            : 'all';
+
         const results = await mediaEngine.search({
           query: cleanQ,
-          category: 'all',
+          category,
           limit: 24,
           page: 1,
         });
@@ -196,7 +206,7 @@ export default function ExploreScreen() {
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, selectedFormat]);
 
   // Load More Search Results (Pagination)
   const handleLoadMoreSearchResults = useCallback(async () => {
@@ -205,9 +215,18 @@ export default function ExploreScreen() {
     const nextPage = searchPage + 1;
 
     try {
+      const category =
+        selectedFormat === 'movie'
+          ? 'movies'
+          : selectedFormat === 'tv'
+          ? 'series'
+          : selectedFormat === 'anime'
+          ? 'anime'
+          : 'all';
+
       const more = await mediaEngine.search({
         query: query.trim(),
-        category: 'all',
+        category,
         limit: 21,
         page: nextPage,
       });
@@ -224,7 +243,7 @@ export default function ExploreScreen() {
     } finally {
       setIsLoadingMoreSearch(false);
     }
-  }, [isLoadingMoreSearch, isSearching, hasMoreSearch, query, searchPage]);
+  }, [isLoadingMoreSearch, isSearching, hasMoreSearch, query, searchPage, selectedFormat]);
 
   const handleQueryChange = (text: string) => {
     setQuery(text);
@@ -274,6 +293,19 @@ export default function ExploreScreen() {
     Haptics.selectionAsync();
     setIsLoadingGenre(true);
     setSelectedSort(srt);
+  };
+
+  const isFilterDirty =
+    selectedGenreId !== 'ALL' ||
+    selectedFormat !== 'all' ||
+    selectedSort !== 'popularity.desc';
+
+  const handleResetFilters = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setSelectedGenreId('ALL');
+    setSelectedFormat('all');
+    setSelectedSort('popularity.desc');
+    setIsLoadingGenre(true);
   };
 
   const isSearchActive = query.trim().length > 0;
@@ -355,51 +387,106 @@ export default function ExploreScreen() {
         // ========================================================
         // UNIVERSAL SEARCH RESULTS VIEW
         // ========================================================
-        <FlatList
-          data={searchResults}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          renderItem={({ item }) => <PosterCard item={item} width={106} showProgress={false} />}
-          columnWrapperStyle={styles.gridRow}
-          contentContainerStyle={styles.searchGridContent}
-          showsVerticalScrollIndicator={false}
-          onEndReached={handleLoadMoreSearchResults}
-          onEndReachedThreshold={0.5}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={
-            <View style={styles.searchResultsHeader}>
-              <Text style={styles.searchResultsCount}>
-                {isSearching
-                  ? 'SEARCHING...'
-                  : `${searchResults.length} RESULTS`}
-              </Text>
+        <View style={styles.searchContainer}>
+          {/* Format Filter Bar during search */}
+          <View style={styles.searchFormatBar}>
+            <View style={styles.segmentedContainer}>
+              {FORMAT_OPTIONS.map((fmt, idx) => {
+                const isActive = selectedFormat === fmt.id;
+                const isLast = idx === FORMAT_OPTIONS.length - 1;
+                return (
+                  <TouchableOpacity
+                    key={fmt.id}
+                    style={[
+                      styles.segmentBtn,
+                      isLast && { borderRightWidth: 0 },
+                      isActive && styles.segmentBtnActive,
+                    ]}
+                    onPress={() => handleSelectFormat(fmt.id)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[styles.segmentBtnText, isActive && styles.segmentBtnTextActive]}
+                      allowFontScaling={true}
+                      maxFontSizeMultiplier={1.2}
+                    >
+                      {fmt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          }
-          ListFooterComponent={
-            isLoadingMoreSearch ? (
-              <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color={colors.accent} />
-                <Text style={styles.footerLoaderText}>LOADING...</Text>
-              </View>
-            ) : !hasMoreSearch && searchResults.length > 0 ? (
-              <View style={styles.footerEnd}>
-                <Text style={styles.footerEndText}>END OF RESULTS</Text>
-              </View>
-            ) : undefined
-          }
-          ListEmptyComponent={
-            !isSearching ? (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="film-outline" size={32} color={colors.textMuted} style={{ marginBottom: 12 }} />
-                <Text style={styles.emptyTitle}>NO TITLES FOUND</Text>
-                <Text style={styles.emptySubtitle}>
-                  No movies, series, or anime match &quot;{query}&quot;. Try adjusting your search term.
+          </View>
+
+          <FlatList
+            data={searchResults}
+            keyExtractor={(item) => item.id}
+            numColumns={3}
+            renderItem={({ item }) => <PosterCard item={item} width={106} showProgress={false} />}
+            columnWrapperStyle={styles.gridRow}
+            contentContainerStyle={styles.searchGridContent}
+            showsVerticalScrollIndicator={false}
+            onEndReached={handleLoadMoreSearchResults}
+            onEndReachedThreshold={0.5}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={
+              <View style={styles.searchResultsHeader}>
+                <Text style={styles.searchResultsCount}>
+                  {isSearching
+                    ? 'SEARCHING...'
+                    : `${searchResults.length} RESULTS${
+                        selectedFormat !== 'all'
+                          ? ` // ${FORMAT_OPTIONS.find((f) => f.id === selectedFormat)?.label}`
+                          : ''
+                      }`}
                 </Text>
+                {selectedFormat !== 'all' && (
+                  <TouchableOpacity
+                    onPress={() => handleSelectFormat('all')}
+                    style={styles.clearFormatBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.clearFormatText}>ALL FORMATS</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            ) : undefined
-          }
-        />
+            }
+            ListFooterComponent={
+              isLoadingMoreSearch ? (
+                <View style={styles.footerLoader}>
+                  <ActivityIndicator size="small" color={colors.accent} />
+                  <Text style={styles.footerLoaderText}>LOADING...</Text>
+                </View>
+              ) : !hasMoreSearch && searchResults.length > 0 ? (
+                <View style={styles.footerEnd}>
+                  <Text style={styles.footerEndText}>END OF RESULTS</Text>
+                </View>
+              ) : undefined
+            }
+            ListEmptyComponent={
+              !isSearching ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="film-outline" size={32} color={colors.textMuted} style={{ marginBottom: 12 }} />
+                  <Text style={styles.emptyTitle}>NO TITLES FOUND</Text>
+                  <Text style={styles.emptySubtitle}>
+                    No {selectedFormat !== 'all' ? selectedFormat : 'media'} match &quot;{query}&quot;. Try adjusting your search term or format filter.
+                  </Text>
+                  {selectedFormat !== 'all' && (
+                    <TouchableOpacity
+                      style={styles.emptyResetBtn}
+                      onPress={() => handleSelectFormat('all')}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.emptyResetBtnText}>SHOW ALL FORMATS</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : undefined
+            }
+          />
+        </View>
       ) : (
         // ========================================================
         // API-DRIVEN GENRE CATALOGUE VIEW (ONLY CONTENT)
@@ -438,45 +525,51 @@ export default function ExploreScreen() {
             </ScrollView>
           </View>
 
-          {/* B. Sub-Filters: Format Switcher & Sort Controls */}
-          <View style={styles.genreMetaStrip}>
-            <View style={styles.controlsRow}>
-              {/* Format Filter (ALL, CINEMA, SERIES) */}
-              <View style={styles.filterGroup}>
-                {FORMAT_OPTIONS.map((fmt) => {
-                  const isActive = selectedFormat === fmt.id;
-                  return (
-                    <TouchableOpacity
-                      key={fmt.id}
-                      style={[styles.filterPill, isActive && styles.filterPillActive]}
-                      onPress={() => handleSelectFormat(fmt.id)}
-                      activeOpacity={0.7}
+          {/* B. Two-Tier Filter Controls: Segmented Format + Sort Controls */}
+          <View style={styles.filterSection}>
+            {/* Tier 1: Format Controller: 4-Way Segmented Bar */}
+            <View style={styles.segmentedContainer}>
+              {FORMAT_OPTIONS.map((fmt, idx) => {
+                const isActive = selectedFormat === fmt.id;
+                const isLast = idx === FORMAT_OPTIONS.length - 1;
+                return (
+                  <TouchableOpacity
+                    key={fmt.id}
+                    style={[
+                      styles.segmentBtn,
+                      isLast && { borderRightWidth: 0 },
+                      isActive && styles.segmentBtnActive,
+                    ]}
+                    onPress={() => handleSelectFormat(fmt.id)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[styles.segmentBtnText, isActive && styles.segmentBtnTextActive]}
+                      allowFontScaling={true}
+                      maxFontSizeMultiplier={1.2}
                     >
-                      <Text
-                        style={[styles.filterPillText, isActive && styles.filterPillTextActive]}
-                        allowFontScaling={true}
-                        maxFontSizeMultiplier={1.2}
-                      >
-                        {fmt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                      {fmt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-              {/* Sort Switcher (POPULAR, TOP RATED, NEWEST) */}
-              <View style={styles.filterGroup}>
+            {/* Tier 2: Sort Switcher & Active Filter Reset */}
+            <View style={styles.sortBar}>
+              <View style={styles.sortOptionsGroup}>
+                <Text style={styles.sortLabel}>SORT //</Text>
                 {SORT_OPTIONS.map((srt) => {
                   const isActive = selectedSort === srt.id;
                   return (
                     <TouchableOpacity
                       key={srt.id}
-                      style={[styles.filterPill, isActive && styles.filterPillActive]}
+                      style={[styles.sortPill, isActive && styles.sortPillActive]}
                       onPress={() => handleSelectSort(srt.id)}
                       activeOpacity={0.7}
                     >
                       <Text
-                        style={[styles.filterPillText, isActive && styles.filterPillTextActive]}
+                        style={[styles.sortPillText, isActive && styles.sortPillTextActive]}
                         allowFontScaling={true}
                         maxFontSizeMultiplier={1.2}
                       >
@@ -486,6 +579,17 @@ export default function ExploreScreen() {
                   );
                 })}
               </View>
+
+              {isFilterDirty && (
+                <TouchableOpacity
+                  style={styles.resetBtn}
+                  onPress={handleResetFilters}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close" size={11} color={colors.accent} style={{ marginRight: 2 }} />
+                  <Text style={styles.resetBtnText}>RESET</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -526,6 +630,15 @@ export default function ExploreScreen() {
                   <Text style={styles.emptySubtitle}>
                     No titles matching this format and sort filter. Try selecting another filter.
                   </Text>
+                  {isFilterDirty && (
+                    <TouchableOpacity
+                      style={styles.emptyResetBtn}
+                      onPress={handleResetFilters}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.emptyResetBtnText}>RESET ALL FILTERS</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               }
             />
@@ -617,6 +730,9 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
   },
   searchResultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 8,
     marginBottom: 6,
   },
@@ -669,42 +785,114 @@ const styles = StyleSheet.create({
   genreTabTextInactive: {
     color: colors.textSecondary,
   },
-  genreMetaStrip: {
+  searchContainer: {
+    flex: 1,
+  },
+  searchFormatBar: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderHairline,
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: colors.void,
+  },
+  segmentedContainer: {
+    flexDirection: 'row',
     backgroundColor: colors.surface,
-  },
-  controlsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  filterGroup: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  filterPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  filterPillActive: {
-    borderColor: colors.accent,
-    backgroundColor: 'rgba(255, 42, 42, 0.1)',
+  segmentBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
   },
-  filterPillText: {
+  segmentBtnActive: {
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+    borderBottomWidth: 2,
+    borderBottomColor: colors.accent,
+  },
+  segmentBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: colors.textSecondary,
+  },
+  segmentBtnTextActive: {
+    color: colors.accent,
+  },
+  filterSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.void,
+    gap: 8,
+  },
+  sortBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sortOptionsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sortLabel: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    letterSpacing: 1,
+    color: colors.textMuted,
+  },
+  sortPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sortPillActive: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+  },
+  sortPillText: {
     fontFamily: typography.fontBold,
     fontSize: 9,
     letterSpacing: 0.6,
     color: colors.textMuted,
   },
-  filterPillTextActive: {
+  sortPillTextActive: {
     color: colors.accent,
+  },
+  resetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    backgroundColor: 'rgba(229, 9, 20, 0.1)',
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  resetBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    letterSpacing: 0.8,
+    color: colors.accent,
+  },
+  clearFormatBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  clearFormatText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    letterSpacing: 0.8,
+    color: colors.textSecondary,
   },
   catalogueGridContent: {
     paddingHorizontal: 16,
@@ -768,5 +956,19 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  emptyResetBtn: {
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+  },
+  emptyResetBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: colors.accent,
   },
 });

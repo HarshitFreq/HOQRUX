@@ -49,18 +49,18 @@ const GENRE_NAME_TO_TMDB_ID: Record<string, { movie?: number; tv?: number }> = {
   DRAMA: { movie: 18, tv: 18 },
   FAMILY: { movie: 10751, tv: 10762 },
   FANTASY: { movie: 14, tv: 10765 },
-  HISTORY: { movie: 36, tv: 36 },
-  HISTORICAL: { movie: 36, tv: 36 },
-  HORROR: { movie: 27, tv: 27 },
-  MUSIC: { movie: 10402, tv: 10402 },
+  HISTORY: { movie: 36, tv: 10768 },
+  HISTORICAL: { movie: 36, tv: 10768 },
+  HORROR: { movie: 27, tv: 9648 },
+  MUSIC: { movie: 10402, tv: 18 },
   MYSTERY: { movie: 9648, tv: 9648 },
-  ROMANCE: { movie: 10749, tv: 10749 },
+  ROMANCE: { movie: 10749, tv: 18 },
   'SCI-FI': { movie: 878, tv: 10765 },
-  THRILLER: { movie: 53, tv: 53 },
+  THRILLER: { movie: 53, tv: 9648 },
   WAR: { movie: 10752, tv: 10768 },
   WESTERN: { movie: 37, tv: 37 },
   MELODRAMA: { movie: 18, tv: 18 },
-  BIOGRAPHY: { movie: 36, tv: 36 },
+  BIOGRAPHY: { movie: 36, tv: 99 },
   NOIR: { movie: 80, tv: 80 },
 };
 
@@ -116,10 +116,10 @@ export const tmdbService = {
   },
 
   async discoverMedia(options: {
-    type?: 'movie' | 'tv' | 'all';
+    type?: 'movie' | 'tv' | 'all' | 'anime';
     genre?: string;
     page?: number;
-    sortBy?: 'popularity.desc' | 'vote_average.desc' | 'primary_release_date.desc';
+    sortBy?: 'popularity.desc' | 'vote_average.desc' | 'primary_release_date.desc' | 'first_air_date.desc';
     withoutGenres?: number[];
     originCountry?: string;
     language?: string;
@@ -136,22 +136,32 @@ export const tmdbService = {
     const apiKey = await this.getActiveApiKey();
     if (!apiKey) return [];
 
-    const isAnime = genre?.toUpperCase() === 'ANIME';
+    const isAnime = type === 'anime' || genre?.toUpperCase() === 'ANIME';
+    const effectiveType = type === 'anime' ? 'all' : type;
+
+    // TMDB requires primary_release_date for movies and first_air_date for TV
+    const movieSort = sortBy === 'first_air_date.desc' ? 'primary_release_date.desc' : sortBy;
+    const tvSort = sortBy === 'primary_release_date.desc' ? 'first_air_date.desc' : sortBy;
+    const today = new Date().toISOString().split('T')[0];
 
     try {
-      if (type === 'all') {
-        const movieGenreId = genre ? GENRE_NAME_TO_TMDB_ID[genre.toUpperCase()]?.movie : undefined;
-        const tvGenreId = genre ? GENRE_NAME_TO_TMDB_ID[genre.toUpperCase()]?.tv : undefined;
+      if (effectiveType === 'all') {
+        const movieGenreId = genre && genre.toUpperCase() !== 'ANIME' ? GENRE_NAME_TO_TMDB_ID[genre.toUpperCase()]?.movie : undefined;
+        const tvGenreId = genre && genre.toUpperCase() !== 'ANIME' ? GENRE_NAME_TO_TMDB_ID[genre.toUpperCase()]?.tv : undefined;
 
-        let movieUrl = `${TMDB_API_BASE}/discover/movie?api_key=${apiKey}&sort_by=${sortBy}&page=${page}`;
-        if (sortBy === 'vote_average.desc') movieUrl += '&vote_count.gte=100';
-        if (movieGenreId) movieUrl += `&with_genres=${movieGenreId}`;
+        let movieUrl = `${TMDB_API_BASE}/discover/movie?api_key=${apiKey}&sort_by=${movieSort}&page=${page}`;
+        if (movieSort === 'vote_average.desc') movieUrl += '&vote_count.gte=100';
+        if (movieSort === 'primary_release_date.desc') movieUrl += `&primary_release_date.lte=${today}&vote_count.gte=5`;
+        if (movieGenreId) movieUrl += `&with_genres=${isAnime ? `16,${movieGenreId}` : movieGenreId}`;
+        else if (isAnime) movieUrl += '&with_genres=16';
         if (isAnime) movieUrl += '&with_original_language=ja';
         if (language) movieUrl += `&with_original_language=${language}`;
 
-        let tvUrl = `${TMDB_API_BASE}/discover/tv?api_key=${apiKey}&sort_by=${sortBy}&page=${page}`;
-        if (sortBy === 'vote_average.desc') tvUrl += '&vote_count.gte=50';
-        if (tvGenreId) tvUrl += `&with_genres=${tvGenreId}`;
+        let tvUrl = `${TMDB_API_BASE}/discover/tv?api_key=${apiKey}&sort_by=${tvSort}&page=${page}`;
+        if (tvSort === 'vote_average.desc') tvUrl += '&vote_count.gte=50';
+        if (tvSort === 'first_air_date.desc') tvUrl += `&first_air_date.lte=${today}&vote_count.gte=5`;
+        if (tvGenreId) tvUrl += `&with_genres=${isAnime ? `16,${tvGenreId}` : tvGenreId}`;
+        else if (isAnime) tvUrl += '&with_genres=16';
         if (isAnime) tvUrl += '&with_original_language=ja';
         if (language) tvUrl += `&with_original_language=${language}`;
 
@@ -181,14 +191,21 @@ export const tmdbService = {
         return interleaved;
       }
 
-      const targetType = type === 'movie' ? 'movie' : 'tv';
-      let url = `${TMDB_API_BASE}/discover/${targetType}?api_key=${apiKey}&sort_by=${sortBy}&page=${page}`;
-      if (sortBy === 'vote_average.desc') {
+      const targetType = effectiveType === 'movie' ? 'movie' : 'tv';
+      const targetSort = targetType === 'tv' ? tvSort : movieSort;
+      let url = `${TMDB_API_BASE}/discover/${targetType}?api_key=${apiKey}&sort_by=${targetSort}&page=${page}`;
+      if (targetSort === 'vote_average.desc') {
         url += targetType === 'movie' ? '&vote_count.gte=100' : '&vote_count.gte=50';
       }
-      if (genre) {
+      if (targetSort === 'primary_release_date.desc' || targetSort === 'first_air_date.desc') {
+        url += targetType === 'movie' ? `&primary_release_date.lte=${today}&vote_count.gte=5` : `&first_air_date.lte=${today}&vote_count.gte=5`;
+      }
+      if (genre && genre.toUpperCase() !== 'ANIME') {
         const genreId = GENRE_NAME_TO_TMDB_ID[genre.toUpperCase()]?.[targetType];
-        if (genreId) url += `&with_genres=${genreId}`;
+        if (genreId) url += `&with_genres=${isAnime ? `16,${genreId}` : genreId}`;
+        else if (isAnime) url += '&with_genres=16';
+      } else if (isAnime) {
+        url += '&with_genres=16';
       }
       if (isAnime) {
         url += '&with_original_language=ja';
