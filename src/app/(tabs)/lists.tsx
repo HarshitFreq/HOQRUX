@@ -77,8 +77,8 @@ export default function ListsScreen() {
         {/* Minimal Poster Strip */}
         {posterItems.length > 0 ? (
           <View style={styles.posterRow}>
-            {posterItems.map((item) => (
-              <View key={item.id} style={styles.posterItem}>
+            {posterItems.map((item, idx) => (
+              <View key={`${item.id}-${idx}`} style={styles.posterItem}>
                 <Image
                   source={{ uri: item.posterPath }}
                   style={styles.collagePoster}

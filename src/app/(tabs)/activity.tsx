@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -130,6 +130,60 @@ export default function ActivityScreen() {
     }
   };
 
+  // Dynamic 14-day viewing cadence computed from real history timestamps
+  const cadenceData = useMemo(() => {
+    const days: { dateStr: string; count: number }[] = [];
+    const now = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      days.push({ dateStr: key, count: 0 });
+    }
+
+    const dayMap = new Map<string, number>();
+    days.forEach((d) => dayMap.set(d.dateStr, 0));
+
+    history.forEach((h) => {
+      try {
+        const key = new Date(h.watchedAt).toISOString().split('T')[0];
+        if (dayMap.has(key)) {
+          dayMap.set(key, (dayMap.get(key) || 0) + 1);
+        }
+      } catch {
+        // Ignore
+      }
+    });
+
+    const maxCount = Math.max(...Array.from(dayMap.values()), 1);
+    return days.map((d, idx) => {
+      const count = dayMap.get(d.dateStr) || 0;
+      const isToday = idx === 13;
+      return {
+        dateStr: d.dateStr,
+        count,
+        heightRatio: count / maxCount,
+        hasActivity: count > 0,
+        isToday,
+      };
+    });
+  }, [history]);
+
+  // Actual dynamic average score calculated from user's rated titles
+  const { averageRatingText, ratedCount } = useMemo(() => {
+    const rated = Object.values(tracking || {}).filter(
+      (t) => typeof t.rating === 'number' && t.rating > 0
+    );
+    if (rated.length === 0) {
+      return { averageRatingText: '—', ratedCount: 0 };
+    }
+    const sum = rated.reduce((acc, t) => acc + (t.rating || 0), 0);
+    return {
+      averageRatingText: (sum / rated.length).toFixed(1) + '★',
+      ratedCount: rated.length,
+    };
+  }, [tracking]);
+
   const trackedCount = Object.keys(tracking || {}).length;
   const listCount = watchlists?.length || 0;
   const logCount = history?.length || 0;
@@ -140,30 +194,25 @@ export default function ActivityScreen() {
         {/* Minimal Clean Profile Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>PROFILE</Text>
-          <View style={styles.headerActions}>
-            {isAuthenticated ? (
-              <TouchableOpacity
-                onPress={handleSignOut}
-                style={styles.signOutHeaderBtn}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="log-out-outline" size={14} color={colors.accent} style={{ marginRight: 4 }} />
-                <Text style={styles.signOutHeaderBtnText}>SIGN OUT</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setIsAccountModalOpen(true);
-                }}
-                style={styles.signInHeaderBtn}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="log-in-outline" size={14} color={colors.accent} style={{ marginRight: 4 }} />
-                <Text style={styles.signInHeaderBtnText}>SIGN IN</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsAccountModalOpen(true);
+            }}
+            style={styles.headerAccountBtn}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                styles.headerStatusDot,
+                { backgroundColor: isAuthenticated ? '#10B981' : colors.textMuted },
+              ]}
+            />
+            <Text style={styles.headerAccountBtnText}>
+              {isAuthenticated ? (user.username || 'ACCOUNT') : 'SIGN IN'}
+            </Text>
+            <Ionicons name="chevron-forward" size={11} color={colors.textSecondary} style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
         </View>
 
         {/* Profile Details Card - Pure Typography, No Logo */}
@@ -175,28 +224,49 @@ export default function ActivityScreen() {
                   <Text style={styles.profileName}>{user.username || 'USER'}</Text>
                   <Text style={styles.profileEmail}>{user.email}</Text>
                 </View>
-                <View style={styles.statusBadge}>
-                  <View style={styles.statusDotActive} />
-                  <Text style={styles.statusBadgeText}>ACTIVE</Text>
-                </View>
+                <TouchableOpacity
+                  onPress={handleSignOut}
+                  style={styles.cardSignOutBtn}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="log-out-outline" size={12} color={colors.accent} style={{ marginRight: 3 }} />
+                  <Text style={styles.cardSignOutText}>SIGN OUT</Text>
+                </TouchableOpacity>
               </View>
 
-              {/* Metrics Strip */}
+              {/* Interactive Metrics Strip */}
               <View style={styles.metricsBar}>
-                <View style={styles.metricItem}>
+                <TouchableOpacity
+                  style={styles.metricItem}
+                  onPress={() => router.push('/(tabs)')}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.metricVal}>{trackedCount}</Text>
-                  <Text style={styles.metricLbl}>TITLES</Text>
-                </View>
+                  <Text style={styles.metricLbl}>TRACKED</Text>
+                </TouchableOpacity>
                 <View style={styles.metricDivider} />
-                <View style={styles.metricItem}>
+                <TouchableOpacity
+                  style={styles.metricItem}
+                  onPress={() => router.push('/(tabs)/lists')}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.metricVal}>{listCount}</Text>
                   <Text style={styles.metricLbl}>LISTS</Text>
-                </View>
+                </TouchableOpacity>
                 <View style={styles.metricDivider} />
-                <View style={styles.metricItem}>
-                  <Text style={styles.metricVal}>{logCount}</Text>
-                  <Text style={styles.metricLbl}>LOGS</Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.metricItem}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setActiveSegment('history');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.metricVal, activeSegment === 'history' && { color: colors.accent }]}>
+                    {logCount}
+                  </Text>
+                  <Text style={styles.metricLbl}>LOGBOOK</Text>
+                </TouchableOpacity>
               </View>
 
               {/* Saved accounts switcher if multiple profiles saved on device */}
@@ -242,22 +312,39 @@ export default function ActivityScreen() {
                 </View>
               </View>
 
-              {/* Metrics Strip */}
+              {/* Interactive Metrics Strip */}
               <View style={styles.metricsBar}>
-                <View style={styles.metricItem}>
+                <TouchableOpacity
+                  style={styles.metricItem}
+                  onPress={() => router.push('/(tabs)')}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.metricVal}>{trackedCount}</Text>
-                  <Text style={styles.metricLbl}>TITLES</Text>
-                </View>
+                  <Text style={styles.metricLbl}>TRACKED</Text>
+                </TouchableOpacity>
                 <View style={styles.metricDivider} />
-                <View style={styles.metricItem}>
+                <TouchableOpacity
+                  style={styles.metricItem}
+                  onPress={() => router.push('/(tabs)/lists')}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.metricVal}>{listCount}</Text>
                   <Text style={styles.metricLbl}>LISTS</Text>
-                </View>
+                </TouchableOpacity>
                 <View style={styles.metricDivider} />
-                <View style={styles.metricItem}>
-                  <Text style={styles.metricVal}>{logCount}</Text>
-                  <Text style={styles.metricLbl}>LOGS</Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.metricItem}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setActiveSegment('history');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.metricVal, activeSegment === 'history' && { color: colors.accent }]}>
+                    {logCount}
+                  </Text>
+                  <Text style={styles.metricLbl}>LOGBOOK</Text>
+                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
@@ -268,7 +355,8 @@ export default function ActivityScreen() {
                   setIsAccountModalOpen(true);
                 }}
               >
-                <Text style={styles.guestSignInBtnText}>SIGN IN / CREATE ACCOUNT →</Text>
+                <Ionicons name="cloud-upload-outline" size={14} color={colors.accent} style={{ marginRight: 6 }} />
+                <Text style={styles.guestSignInBtnText}>SIGN IN TO SYNC WITH CLOUD →</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -301,7 +389,11 @@ export default function ActivityScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.segmentBtn, activeSegment === 'about' && styles.segmentBtnActive]}
+            style={[
+              styles.segmentBtn,
+              { borderRightWidth: 0 },
+              activeSegment === 'about' && styles.segmentBtnActive,
+            ]}
             onPress={() => {
               Haptics.selectionAsync();
               setActiveSegment('about');
@@ -368,9 +460,18 @@ export default function ActivityScreen() {
 
                     <View style={styles.historyInfo}>
                       <View style={styles.historyTopRow}>
-                        <Text style={styles.formatTag}>
-                          {entry.mediaType === 'tv' ? 'SERIES' : 'FILM'}
-                        </Text>
+                        <View style={styles.historyTagGroup}>
+                          <Text style={styles.formatTag}>
+                            {entry.mediaType === 'tv' ? 'SERIES' : 'FILM'}
+                          </Text>
+                          {tracking[entry.titleId]?.rating ? (
+                            <View style={styles.userRatingPill}>
+                              <Text style={styles.userRatingPillText}>
+                                ★ {tracking[entry.titleId].rating?.toFixed(1)}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
                         <Text style={styles.historyDate}>
                           {formatWatchedDate(entry.watchedAt)}
                         </Text>
@@ -441,8 +542,8 @@ export default function ActivityScreen() {
                 />
                 <StatCard
                   label="Average Rating"
-                  value="4.7★"
-                  subValue="Mean score"
+                  value={averageRatingText}
+                  subValue={ratedCount > 0 ? `${ratedCount} rated` : 'Mean score'}
                   accentColor={colors.starYellow}
                 />
               </View>
@@ -460,27 +561,26 @@ export default function ActivityScreen() {
                   : 'Start watching to build your cadence.'}
               </Text>
               <View style={styles.cadenceChart}>
-                {[40, 60, 20, 50, 30, 70, 15, 60, 80, 100, 45, 65, 85, 30].map(
-                  (val, idx) => {
-                    const isRecent = idx >= 10;
-                    return (
-                      <View
-                        key={idx}
-                        style={[
-                          styles.cadenceBar,
-                          {
-                            height: Math.max(val * 0.35, 6),
-                            backgroundColor: isRecent
-                              ? colors.accent
-                              : idx > 6
-                              ? '#FFFFFF'
-                              : '#22222C',
-                          },
-                        ]}
-                      />
-                    );
-                  }
-                )}
+                {cadenceData.map((day) => (
+                  <View
+                    key={day.dateStr}
+                    style={[
+                      styles.cadenceBar,
+                      {
+                        height: Math.max(day.heightRatio * 32, 4),
+                        backgroundColor: day.isToday
+                          ? colors.accent
+                          : day.hasActivity
+                          ? '#FFFFFF'
+                          : '#1C1C24',
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+              <View style={styles.cadenceLegendRow}>
+                <Text style={styles.cadenceLegendText}>14D AGO</Text>
+                <Text style={styles.cadenceLegendText}>TODAY</Text>
               </View>
             </View>
 
@@ -650,43 +750,42 @@ const styles = StyleSheet.create({
     letterSpacing: Platform.OS === 'ios' ? 2 : 0,
     includeFontPadding: false,
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  signOutHeaderBtn: {
+  headerAccountBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     borderWidth: 1,
-    borderColor: '#3A1418',
-    backgroundColor: '#16080A',
-    borderRadius: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  signOutHeaderBtnText: {
+  headerStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  headerAccountBtnText: {
     fontFamily: typography.fontBold,
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 9.5,
-    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    letterSpacing: Platform.OS === 'ios' ? 0.8 : 0,
     includeFontPadding: false,
   },
-  signInHeaderBtn: {
+  cardSignOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: colors.surface,
-    borderRadius: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
   },
-  signInHeaderBtnText: {
+  cardSignOutText: {
     fontFamily: typography.fontBold,
-    color: colors.accent,
-    fontSize: 9.5,
-    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    color: colors.textMuted,
+    fontSize: 9,
+    letterSpacing: 0.5,
     includeFontPadding: false,
   },
 
@@ -855,26 +954,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   segmentBtn: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
   },
   segmentBtnActive: {
-    backgroundColor: colors.textPrimary,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+    borderBottomWidth: 2,
+    borderBottomColor: colors.accent,
   },
   segmentText: {
     fontFamily: typography.fontBold,
     fontSize: 10,
     color: colors.textMuted,
-    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    letterSpacing: Platform.OS === 'ios' ? 0.8 : 0,
     includeFontPadding: false,
   },
   segmentTextActive: {
-    color: '#050507',
+    color: colors.accent,
   },
 
   logSubHeader: {
@@ -970,6 +1073,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  historyTagGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  userRatingPill: {
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    backgroundColor: 'rgba(234, 179, 8, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(234, 179, 8, 0.3)',
+    borderRadius: 2,
+  },
+  userRatingPillText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.starYellow,
+    includeFontPadding: false,
+  },
   formatTag: {
     fontFamily: typography.fontBold,
     fontSize: 9,
@@ -1059,6 +1181,19 @@ const styles = StyleSheet.create({
   cadenceBar: {
     flex: 1,
     borderRadius: 1,
+  },
+  cadenceLegendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    paddingHorizontal: 2,
+  },
+  cadenceLegendText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    includeFontPadding: false,
   },
   genreBreakdownSection: {
     backgroundColor: colors.surface,
