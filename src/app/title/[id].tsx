@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
-  Alert,
   Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -28,8 +27,6 @@ import { RatingStars } from '../../components/RatingStars';
 import { ShareCardModal } from '../../components/ShareCardModal';
 import { NativeTitleLogo } from '../../components/NativeTitleLogo';
 import { getCanonicalMediaType } from '../../services/api/tmdbLogo';
-import { SoundtrackCard } from '../../components/SoundtrackCard';
-import { TrailerCard } from '../../components/TrailerCard';
 import { FranchiseCollectionCard } from '../../components/FranchiseCollectionCard';
 import { trailerService } from '../../services/trailerService';
 import { INITIAL_MEDIA_ITEMS } from '../../services/mockData';
@@ -43,8 +40,6 @@ export default function TitleDetailScreen() {
     setRating,
     setReview,
     toggleFavorite,
-    toggleReminder,
-    incrementRewatch,
     markSeasonWatched,
     markEpisodesUpTo,
     getShowProgress,
@@ -252,17 +247,6 @@ export default function TitleDetailScreen() {
     toggleFavorite(item.id);
   };
 
-  const handleToggleReminder = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    toggleReminder(item.id);
-    Alert.alert(
-      tracking?.reminderEnabled ? 'Reminder Removed' : 'Reminder Set',
-      tracking?.reminderEnabled
-        ? 'Alerts disabled for this title.'
-        : `HOQRUX will alert you when new episodes air.`
-    );
-  };
-
   const isEntireSeasonWatched = Boolean(
     selectedSeason &&
     selectedSeason.episodes.length > 0 &&
@@ -465,46 +449,15 @@ export default function TitleDetailScreen() {
                 />
               </View>
 
+              {/* Essential Action Pills: Watchlist & Official Trailer */}
               <View style={styles.actionPillsRow}>
                 <TouchableOpacity
                   style={styles.actionPill}
                   onPress={() => setIsListModalOpen(true)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="bookmark-outline" size={13} color={colors.textPrimary} />
+                  <Ionicons name="bookmark-outline" size={13} color={colors.textPrimary} style={{ marginRight: 5 }} />
                   <Text style={styles.actionPillText}>WATCHLIST</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.actionPill}
-                  onPress={() => incrementRewatch(item.id)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="repeat-outline" size={13} color={colors.textPrimary} />
-                  <Text style={styles.actionPillText}>REWATCH ({tracking?.rewatchCount || 0})</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.actionPill,
-                    tracking?.reminderEnabled && styles.actionPillActive,
-                  ]}
-                  onPress={handleToggleReminder}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={tracking?.reminderEnabled ? 'notifications' : 'notifications-outline'}
-                    size={13}
-                    color={tracking?.reminderEnabled ? colors.accent : colors.textPrimary}
-                  />
-                  <Text
-                    style={[
-                      styles.actionPillText,
-                      tracking?.reminderEnabled && { color: colors.accent },
-                    ]}
-                  >
-                    {tracking?.reminderEnabled ? 'ALERT ON' : 'REMIND'}
-                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -512,8 +465,8 @@ export default function TitleDetailScreen() {
                   onPress={() => trailerService.openTrailer(item)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="logo-youtube" size={13} color="#FF0000" />
-                  <Text style={styles.actionPillText}>TRAILER</Text>
+                  <Ionicons name="logo-youtube" size={13} color="#FF0000" style={{ marginRight: 5 }} />
+                  <Text style={styles.actionPillText}>OFFICIAL TRAILER</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -583,12 +536,6 @@ export default function TitleDetailScreen() {
                   )}
                 </View>
               </View>
-
-              {/* Official Trailer (YouTube App External Launch) */}
-              <TrailerCard mediaItem={item} />
-
-              {/* Official Soundtrack (Spotify Integration) */}
-              <SoundtrackCard mediaItem={item} initialSoundtrack={item.soundtrack} />
 
               {/* Franchise & Collection Order (Chronological Timeline) */}
               {collection && (

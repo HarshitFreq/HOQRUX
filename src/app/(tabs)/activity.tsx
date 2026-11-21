@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
-  Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,10 +18,12 @@ import { typography } from '../../theme/typography';
 import { useTracking } from '../../context/TrackingContext';
 import { useAuth } from '../../context/AuthContext';
 import { AccountModal } from '../../components/AccountModal';
+import { LegalAboutModal } from '../../components/LegalAboutModal';
 
 export default function ActivityScreen() {
   const { user, isAuthenticated, signOut, deleteAccount } = useAuth();
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
 
   const {
     tracking,
@@ -35,7 +36,7 @@ export default function ActivityScreen() {
     resolveMediaItem,
     refreshTracking,
   } = useTracking();
-  const [activeSegment, setActiveSegment] = useState<'history' | 'stats' | 'about'>('history');
+  const [activeSegment, setActiveSegment] = useState<'history' | 'stats'>('history');
 
   useFocusEffect(
     useCallback(() => {
@@ -201,25 +202,32 @@ export default function ActivityScreen() {
         {/* Minimal Clean Profile Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>PROFILE</Text>
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setIsAccountModalOpen(true);
-            }}
-            style={styles.headerAccountBtn}
-            activeOpacity={0.7}
-          >
-            <View
-              style={[
-                styles.headerStatusDot,
-                { backgroundColor: isAuthenticated ? '#10B981' : colors.textMuted },
-              ]}
-            />
-            <Text style={styles.headerAccountBtnText}>
-              {isAuthenticated ? (user.username || 'ACCOUNT') : 'SIGN IN'}
-            </Text>
-            <Ionicons name="chevron-forward" size={11} color={colors.textSecondary} style={{ marginLeft: 2 }} />
-          </TouchableOpacity>
+          <View style={styles.headerRightActions}>
+            {!isAuthenticated && (
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setIsAccountModalOpen(true);
+                }}
+                style={styles.headerAccountBtn}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.headerStatusDot, { backgroundColor: colors.textMuted }]} />
+                <Text style={styles.headerAccountBtnText}>SIGN IN</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsLegalModalOpen(true);
+              }}
+              style={styles.headerInfoBtn}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="information-circle-outline" size={19} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Profile Details Card - Pure Typography, No Logo */}
@@ -354,7 +362,11 @@ export default function ActivityScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.segmentBtn, activeSegment === 'stats' && styles.segmentBtnActive]}
+            style={[
+              styles.segmentBtn,
+              { borderRightWidth: 0 },
+              activeSegment === 'stats' && styles.segmentBtnActive,
+            ]}
             onPress={() => {
               Haptics.selectionAsync();
               setActiveSegment('stats');
@@ -363,22 +375,6 @@ export default function ActivityScreen() {
           >
             <Text style={[styles.segmentText, activeSegment === 'stats' && styles.segmentTextActive]}>
               STATS
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.segmentBtn,
-              { borderRightWidth: 0 },
-              activeSegment === 'about' && styles.segmentBtnActive,
-            ]}
-            onPress={() => {
-              Haptics.selectionAsync();
-              setActiveSegment('about');
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.segmentText, activeSegment === 'about' && styles.segmentTextActive]}>
-              ABOUT & DATA
             </Text>
           </TouchableOpacity>
         </View>
@@ -661,112 +657,19 @@ export default function ActivityScreen() {
             </View>
           </ScrollView>
         )}
-
-        {/* Segment 3: About, Legal, TMDb Attribution & Data Purge */}
-        {activeSegment === 'about' && (
-          <ScrollView
-            style={styles.scrollList}
-            contentContainerStyle={styles.aboutContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* App Meta Section */}
-            <View style={styles.aboutCard}>
-              <Text style={styles.aboutCardTitle}>HOQRUX // ARCHITECTURE</Text>
-              <Text style={styles.aboutCardSubtitle}>
-                Pure Swiss Brutalist cinema, television, and anime tracker. Built with local-first persistence, dual-layer caching, and real-time cloud synchronization.
-              </Text>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>VERSION</Text>
-                <Text style={styles.metaValue}>1.0.0 (RELEASE)</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>CLIENT</Text>
-                <Text style={styles.metaValue}>EXPO 58 // REACT 19</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>DATABASE</Text>
-                <Text style={styles.metaValue}>{isAuthenticated ? 'SUPABASE CLOUD + LOCAL' : 'OFFLINE LOCAL-FIRST'}</Text>
-              </View>
-            </View>
-
-            {/* Mandatory TMDb Attribution Section (Google Play / TMDb Compliance) */}
-            <View style={styles.aboutCard}>
-              <View style={styles.tmdbHeaderRow}>
-                <Text style={styles.aboutCardTitle}>DATA SOURCES & ATTRIBUTION</Text>
-                <View style={styles.tmdbBadge}>
-                  <Text style={styles.tmdbBadgeText}>TMDB API</Text>
-                </View>
-              </View>
-              <Text style={styles.tmdbDisclaimerText}>
-                This product uses the TMDB API but is not endorsed or certified by TMDB.
-              </Text>
-              <Text style={styles.aboutCardSubtitle}>
-                Film, television, streaming availability, and anime catalog records are supplied by The Movie Database (TMDb), AniList, and TVmaze.
-              </Text>
-            </View>
-
-            {/* Legal & Privacy Policy Links (Google Play Mandate) */}
-            <View style={styles.aboutCard}>
-              <Text style={styles.aboutCardTitle}>LEGAL & POLICIES</Text>
-              <TouchableOpacity
-                style={styles.legalLinkRow}
-                onPress={() => Linking.openURL('https://github.com/HarshitFreq/HOQRUX/blob/main/docs/PRIVACY_POLICY.md')}
-                activeOpacity={0.7}
-              >
-                <View style={styles.legalLinkLeft}>
-                  <Ionicons name="shield-checkmark-outline" size={15} color={colors.textPrimary} style={{ marginRight: 8 }} />
-                  <Text style={styles.legalLinkText}>Privacy Policy</Text>
-                </View>
-                <Ionicons name="open-outline" size={13} color={colors.textMuted} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.legalLinkRow}
-                onPress={() => Linking.openURL('https://github.com/HarshitFreq/HOQRUX/blob/main/docs/ACCOUNT_DELETION.md')}
-                activeOpacity={0.7}
-              >
-                <View style={styles.legalLinkLeft}>
-                  <Ionicons name="trash-bin-outline" size={15} color={colors.textPrimary} style={{ marginRight: 8 }} />
-                  <Text style={styles.legalLinkText}>Account & Data Deletion</Text>
-                </View>
-                <Ionicons name="open-outline" size={13} color={colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Danger Zone: Account & Data Purge (Google Play Mandate) */}
-            <View style={styles.dangerZoneCard}>
-              <Text style={styles.dangerZoneTitle}>DATA PURGE // DANGER ZONE</Text>
-              <Text style={styles.dangerZoneDesc}>
-                Permanently purge all user records, lists, ratings, and viewing history. This action cannot be reversed.
-              </Text>
-
-              {isAuthenticated ? (
-                <TouchableOpacity
-                  style={styles.deleteAccountBtn}
-                  onPress={handleDeleteAccount}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons name="trash-outline" size={14} color={colors.accent} style={{ marginRight: 6 }} />
-                  <Text style={styles.deleteAccountBtnText}>DELETE ACCOUNT & PURGE ALL DATA</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.deleteAccountBtn}
-                  onPress={handleClearHistory}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons name="trash-outline" size={14} color={colors.accent} style={{ marginRight: 6 }} />
-                  <Text style={styles.deleteAccountBtnText}>PURGE ALL LOCAL DEVICE DATA</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </ScrollView>
-        )}
       </View>
 
       <AccountModal
         visible={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
+      />
+
+      <LegalAboutModal
+        visible={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+        isAuthenticated={isAuthenticated}
+        onDeleteAccount={handleDeleteAccount}
+        onClearHistory={handleClearHistory}
       />
     </SafeAreaView>
   );
@@ -796,6 +699,16 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     letterSpacing: Platform.OS === 'ios' ? 2 : 0,
     includeFontPadding: false,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerInfoBtn: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerAccountBtn: {
     flexDirection: 'row',
@@ -1334,131 +1247,5 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     letterSpacing: 0.8,
     includeFontPadding: false,
-  },
-
-  // About, Legal & Data Purge Styles
-  aboutContent: {
-    paddingBottom: 110,
-    gap: 12,
-  },
-  aboutCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-  },
-  aboutCardTitle: {
-    fontFamily: typography.fontBold,
-    fontSize: 10.5,
-    letterSpacing: 1.2,
-    color: colors.textPrimary,
-    marginBottom: 6,
-  },
-  aboutCardSubtitle: {
-    fontFamily: typography.fontBody,
-    fontSize: 11.5,
-    lineHeight: 17,
-    color: colors.textMuted,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderHairline,
-    marginTop: 6,
-  },
-  metaLabel: {
-    fontFamily: typography.fontBold,
-    fontSize: 9.5,
-    letterSpacing: 0.8,
-    color: colors.textMuted,
-  },
-  metaValue: {
-    fontFamily: typography.fontBold,
-    fontSize: 9.5,
-    letterSpacing: 0.8,
-    color: colors.textPrimary,
-  },
-  tmdbHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  tmdbBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: 'rgba(229, 9, 20, 0.12)',
-  },
-  tmdbBadgeText: {
-    fontFamily: typography.fontBold,
-    fontSize: 8.5,
-    letterSpacing: 0.8,
-    color: colors.accent,
-  },
-  tmdbDisclaimerText: {
-    fontFamily: typography.fontBold,
-    fontSize: 11,
-    lineHeight: 16,
-    color: colors.textPrimary,
-    marginBottom: 6,
-  },
-  legalLinkRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderHairline,
-    marginTop: 6,
-  },
-  legalLinkLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  legalLinkText: {
-    fontFamily: typography.fontBold,
-    fontSize: 11.5,
-    color: colors.textPrimary,
-  },
-  dangerZoneCard: {
-    backgroundColor: '#16080A',
-    borderWidth: 1,
-    borderColor: '#3A1418',
-    padding: 14,
-    marginTop: 6,
-  },
-  dangerZoneTitle: {
-    fontFamily: typography.fontBold,
-    fontSize: 10.5,
-    letterSpacing: 1.2,
-    color: colors.accent,
-    marginBottom: 6,
-  },
-  dangerZoneDesc: {
-    fontFamily: typography.fontBody,
-    fontSize: 11.5,
-    lineHeight: 16,
-    color: '#E09BA0',
-    marginBottom: 12,
-  },
-  deleteAccountBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    backgroundColor: '#2A0D11',
-    borderWidth: 1,
-    borderColor: colors.accent,
-  },
-  deleteAccountBtnText: {
-    fontFamily: typography.fontBold,
-    fontSize: 10,
-    letterSpacing: 1,
-    color: colors.accent,
   },
 });

@@ -18,7 +18,6 @@ import { myDramaListService } from './asian/mydramalist';
 import { archiveService } from './niche/archive';
 import { idMapper } from './mapping/idMapper';
 import { typoCorrectionService } from '../typoCorrection';
-import { soundtrackService } from '../soundtrackService';
 
 export interface SearchOptions {
   query: string;
@@ -54,7 +53,6 @@ export const mediaEngine = {
   mydramalist: myDramaListService,
   archive: archiveService,
   idMapper,
-  soundtrack: soundtrackService,
 
   /**
    * Unified Search across providers based on category or target provider
@@ -376,13 +374,6 @@ export const mediaEngine = {
           // Ignore
         }
       }
-    }
-
-    // Resolve official soundtrack metadata & Spotify links
-    try {
-      enriched.soundtrack = await soundtrackService.resolveSoundtrack(enriched);
-    } catch {
-      // Continue without soundtrack if network fails
     }
 
     return enriched;
