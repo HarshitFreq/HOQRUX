@@ -17,7 +17,6 @@ import { MediaItem } from '../../services/types';
 import { HomeDiscovery } from '../../components/HomeDiscovery';
 import { CategoryTabs, HomeCategory } from '../../components/CategoryTabs';
 import { ContinueWatchingShelf } from '../../components/ContinueWatchingShelf';
-import { HeroCarousel } from '../../components/HeroCarousel';
 import { airingCalendarService, AiringEpisode } from '../../services/airingCalendarService';
 
 function isAnimeMedia(m?: MediaItem | null): boolean {
@@ -54,7 +53,6 @@ function isAnimeMedia(m?: MediaItem | null): boolean {
 export default function NowScreen() {
   const {
     tracking,
-    stats,
     resolveMediaItem,
     refreshTracking,
     getShowProgress,
@@ -189,111 +187,24 @@ export default function NowScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* 1 & 2: Primary Spotlight & Active Log Reel OR Empty Banner */}
+        {/* 1. Continue Watching */}
         {displayWatching.length > 0 ? (
-          <>
-            <HeroCarousel
-              items={displayWatching}
-              onSelectTitle={(item) =>
-                router.push({ pathname: '/title/[id]', params: { id: item.id } })
-              }
-            />
-            <ContinueWatchingShelf items={displayWatching} />
-          </>
+          <ContinueWatchingShelf items={displayWatching} />
         ) : (
           <View style={styles.emptySpotlightCard}>
-            <View style={styles.emptySpotlightHeader}>
-              <View style={styles.emptyDot} />
-              <Text style={styles.emptySpotlightBadge}>
-                {selectedCategory === 'all'
-                  ? 'SPOTLIGHT // QUEUE EMPTY'
-                  : `SPOTLIGHT // NO ACTIVE ${selectedCategory.toUpperCase()}`}
-              </Text>
-            </View>
-            <Text style={styles.emptySpotlightTitle}>NO ACTIVE TITLES IN ROTATION</Text>
+            <Text style={styles.emptySpotlightTitle}>NO ACTIVE TITLES</Text>
             <Text style={styles.emptySpotlightDesc}>
-              Log a film or series to activate real-time progress and spotlight tracking.
+              Films and shows you are currently watching will appear here with one-tap episode logging.
             </Text>
             <TouchableOpacity
               style={styles.emptySpotlightAction}
               activeOpacity={0.8}
               onPress={() => router.push('/(tabs)/search')}
             >
-              <Text style={styles.emptySpotlightActionText}>EXPLORE TITLES →</Text>
+              <Text style={styles.emptySpotlightActionText}>DISCOVER TITLES →</Text>
             </TouchableOpacity>
           </View>
         )}
-
-        {/* 3. Minimal Swiss Horizontal Stats Bar */}
-        <View style={styles.statsBar}>
-          <View style={styles.statItem}>
-            <Text
-              style={styles.statVal}
-              allowFontScaling={true}
-              maxFontSizeMultiplier={1.25}
-            >
-              {stats.totalHoursWatched}h
-            </Text>
-            <Text
-              style={styles.statLbl}
-              allowFontScaling={true}
-              maxFontSizeMultiplier={1.2}
-            >
-              WATCHED
-            </Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text
-              style={styles.statVal}
-              allowFontScaling={true}
-              maxFontSizeMultiplier={1.25}
-            >
-              {stats.totalEpisodesWatched}
-            </Text>
-            <Text
-              style={styles.statLbl}
-              allowFontScaling={true}
-              maxFontSizeMultiplier={1.2}
-            >
-              EPISODES
-            </Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text
-              style={styles.statVal}
-              allowFontScaling={true}
-              maxFontSizeMultiplier={1.25}
-            >
-              {stats.totalMoviesWatched}
-            </Text>
-            <Text
-              style={styles.statLbl}
-              allowFontScaling={true}
-              maxFontSizeMultiplier={1.2}
-            >
-              FILMS
-            </Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text
-              style={[styles.statVal, { color: colors.accent }]}
-              allowFontScaling={true}
-              maxFontSizeMultiplier={1.25}
-            >
-              {stats.streakDays}d
-            </Text>
-            <Text
-              style={styles.statLbl}
-              allowFontScaling={true}
-              maxFontSizeMultiplier={1.2}
-            >
-              STREAK
-            </Text>
-          </View>
-        </View>
 
         {/* 4. Release Radar // Airing Calendar Header */}
         <View style={styles.radarHeaderRow}>

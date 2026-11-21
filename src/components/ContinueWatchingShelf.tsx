@@ -82,31 +82,19 @@ export const ContinueWatchingShelf: React.FC<ContinueWatchingShelfProps> = memo(
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <View style={styles.titleGroup}>
-          <Text
-            style={styles.sectionTitle}
-            allowFontScaling={true}
-            maxFontSizeMultiplier={1.25}
-          >
-            ACTIVE LOG
-          </Text>
-          <View style={styles.badgePill}>
-            <View style={styles.activeDot} />
-            <Text
-              style={styles.badgeText}
-              allowFontScaling={true}
-              maxFontSizeMultiplier={1.2}
-            >
-              IN ROTATION
-            </Text>
-          </View>
-        </View>
+        <Text
+          style={styles.sectionTitle}
+          allowFontScaling={true}
+          maxFontSizeMultiplier={1.25}
+        >
+          CONTINUE WATCHING
+        </Text>
         <Text
           style={styles.countText}
           allowFontScaling={true}
           maxFontSizeMultiplier={1.2}
         >
-          {ongoingItems.length} TITLES
+          {ongoingItems.length} {ongoingItems.length === 1 ? 'TITLE' : 'TITLES'}
         </Text>
       </View>
 
@@ -130,7 +118,6 @@ export const ContinueWatchingShelf: React.FC<ContinueWatchingShelfProps> = memo(
             ? item.backdropPath.replace(/\/t\/p\/(w\d+|original)\//, '/t/p/w500/')
             : item.posterPath;
 
-          // Showcase the next episode's thumbnail that the user has to watch
           const displayedThumbnail = (!isMovie && epData?.stillPath)
             ? epData.stillPath
             : defaultBackdrop;
@@ -161,34 +148,7 @@ export const ContinueWatchingShelf: React.FC<ContinueWatchingShelfProps> = memo(
                 {/* Subtle dark gradient overlay */}
                 <View style={styles.cardGradientOverlay} />
 
-                {/* Top Badge: Technical Episode Tag or Film Tag */}
-                <View style={styles.cardTopBadge}>
-                  <Text
-                    style={styles.cardTopBadgeText}
-                    allowFontScaling={true}
-                    maxFontSizeMultiplier={1.2}
-                  >
-                    {isMovie
-                      ? 'FILM // WANT TO WATCH'
-                      : `NEXT UP // S${currentSeason}:E${nextEp}`}
-                  </Text>
-                </View>
-
-                {/* Next Episode Title Overlay directly on thumbnail */}
-                {!isMovie && epData?.title ? (
-                  <View style={styles.nextEpStillBanner}>
-                    <Text
-                      style={styles.nextEpStillBannerText}
-                      numberOfLines={1}
-                      allowFontScaling={true}
-                      maxFontSizeMultiplier={1.2}
-                    >
-                      NEXT: E{nextEp < 10 ? `0${nextEp}` : nextEp} • {epData.title}
-                    </Text>
-                  </View>
-                ) : null}
-
-                {/* Ratio Tag: e.g. 5/12 EPS or Film Spec */}
+                {/* Top Right Pill: e.g. 42% or Film */}
                 <View style={styles.cardRatioBadge}>
                   <Text
                     style={styles.cardRatioText}
@@ -196,12 +156,12 @@ export const ContinueWatchingShelf: React.FC<ContinueWatchingShelfProps> = memo(
                     maxFontSizeMultiplier={1.2}
                   >
                     {isMovie
-                      ? `${item.runtime || 120} MIN`
-                      : `${progress.watchedCount}/${progress.totalCount} (${progress.percentage}%)`}
+                      ? 'FILM'
+                      : `${progress.percentage}%`}
                   </Text>
                 </View>
 
-                {/* Bottom Progress Bar using colors.accent */}
+                {/* Bottom Progress Bar */}
                 <View style={styles.progressTrack}>
                   <View
                     style={[
@@ -218,7 +178,13 @@ export const ContinueWatchingShelf: React.FC<ContinueWatchingShelfProps> = memo(
 
               {/* Card Meta & Mark Watched Quick Action */}
               <View style={styles.cardDetails}>
-                <View style={styles.cardTextCol}>
+                <TouchableOpacity
+                  style={styles.cardTextCol}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    router.push({ pathname: '/title/[id]', params: { id: item.id } })
+                  }
+                >
                   <Text
                     style={styles.itemTitle}
                     numberOfLines={1}
@@ -234,10 +200,10 @@ export const ContinueWatchingShelf: React.FC<ContinueWatchingShelfProps> = memo(
                     maxFontSizeMultiplier={1.2}
                   >
                     {isMovie
-                      ? `${item.releaseYear} • WANT TO WATCH`
-                      : `S${currentSeason}:E${nextEp} · ${epData?.title || `Episode ${nextEp}`}`}
+                      ? `${item.releaseYear} • Want to Watch`
+                      : `S${currentSeason} · E${nextEp} ${epData?.title ? `/ ${epData.title}` : ''}`}
                   </Text>
-                </View>
+                </TouchableOpacity>
 
                 {/* Quick Action Button */}
                 <TouchableOpacity
@@ -247,15 +213,15 @@ export const ContinueWatchingShelf: React.FC<ContinueWatchingShelfProps> = memo(
                 >
                   <Ionicons
                     name="checkmark"
-                    size={11}
-                    color={colors.textPrimary}
+                    size={12}
+                    color={colors.accent}
                   />
                   <Text
                     style={styles.markWatchedText}
                     allowFontScaling={true}
                     maxFontSizeMultiplier={1.2}
                   >
-                    {isMovie ? 'LOG FILM' : `LOG E${nextEp}`}
+                    {isMovie ? 'LOG' : `LOG E${nextEp}`}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -378,36 +344,20 @@ const styles = StyleSheet.create({
   },
   cardRatioBadge: {
     position: 'absolute',
-    top: 7,
-    right: 7,
+    top: 8,
+    right: 8,
     backgroundColor: 'rgba(5, 5, 7, 0.85)',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 2,
-  },
-  nextEpStillBanner: {
-    position: 'absolute',
-    bottom: 8,
-    left: 7,
-    right: 7,
-    backgroundColor: 'rgba(5, 5, 7, 0.88)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 2,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  nextEpStillBannerText: {
-    fontFamily: typography.fontBold,
-    color: colors.textPrimary,
-    fontSize: 8.5,
-    letterSpacing: Platform.OS === 'ios' ? 0.4 : 0,
-    includeFontPadding: false,
+    paddingVertical: 2,
+    borderRadius: 2,
   },
   cardRatioText: {
-    fontFamily: typography.fontMedium,
-    fontSize: 8,
-    color: colors.textMuted,
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   progressTrack: {
     position: 'absolute',
@@ -434,14 +384,14 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     fontFamily: typography.fontBold,
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textPrimary,
     letterSpacing: Platform.OS === 'ios' ? 0.2 : 0,
     includeFontPadding: false,
   },
   episodeTitle: {
     fontFamily: typography.fontMedium,
-    fontSize: 9.5,
+    fontSize: 10,
     color: colors.textSecondary,
     includeFontPadding: false,
     marginTop: 2,
@@ -449,11 +399,11 @@ const styles = StyleSheet.create({
   markWatchedButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceHighlight,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    borderColor: colors.accent,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 2,
   },
   markWatchedButtonDone: {
@@ -462,9 +412,9 @@ const styles = StyleSheet.create({
   },
   markWatchedText: {
     fontFamily: typography.fontBold,
-    fontSize: 8.5,
-    color: colors.textPrimary,
-    letterSpacing: Platform.OS === 'ios' ? 0.8 : 0,
+    fontSize: 9,
+    color: colors.accent,
+    letterSpacing: Platform.OS === 'ios' ? 0.5 : 0,
     marginLeft: 3,
     includeFontPadding: false,
   },

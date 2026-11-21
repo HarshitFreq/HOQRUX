@@ -25,7 +25,7 @@ interface CategoryTabsProps {
 
 const CATEGORIES: { id: HomeCategory; label: string }[] = [
   { id: 'all', label: 'ALL' },
-  { id: 'movies', label: 'CINEMA' },
+  { id: 'movies', label: 'FILMS' },
   { id: 'tv', label: 'SERIES' },
   { id: 'anime', label: 'ANIME' },
 ];
@@ -63,8 +63,9 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = memo(({
       {/* Swiss Precision Segmented Category Rail */}
       <View style={styles.tabsRow}>
         <View style={styles.segmentedRail}>
-          {CATEGORIES.map((tab) => {
+          {CATEGORIES.map((tab, idx) => {
             const isActive = selectedCategory === tab.id;
+            const isLast = idx === CATEGORIES.length - 1;
             return (
               <TouchableOpacity
                 key={tab.id}
@@ -72,10 +73,10 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = memo(({
                 onPress={() => handleTabPress(tab.id)}
                 style={[
                   styles.segmentItem,
+                  isLast && { borderRightWidth: 0 },
                   isActive && styles.segmentItemActive,
                 ]}
               >
-                {isActive && <View style={styles.activeDot} />}
                 <Text
                   style={[
                     styles.segmentText,
@@ -83,6 +84,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = memo(({
                   ]}
                   allowFontScaling={true}
                   maxFontSizeMultiplier={1.2}
+                  numberOfLines={1}
                 >
                   {tab.label}
                 </Text>
@@ -135,43 +137,35 @@ const styles = StyleSheet.create({
   },
   segmentedRail: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 3,
-    padding: 2.5,
+    borderRadius: 2,
   },
   segmentItem: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    borderRadius: 2,
+    paddingVertical: 8,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
   },
   segmentItemActive: {
-    backgroundColor: colors.surfaceHighlight,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.accent,
-    marginRight: 5,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+    borderBottomWidth: 2,
+    borderBottomColor: colors.accent,
   },
   segmentText: {
     fontSize: 10,
-    letterSpacing: Platform.OS === 'ios' ? 1.2 : 0,
+    letterSpacing: Platform.OS === 'ios' ? 0.8 : 0,
     includeFontPadding: false,
   },
   segmentTextActive: {
     fontFamily: typography.fontBold,
-    color: colors.textPrimary,
+    color: colors.accent,
   },
   segmentTextInactive: {
     fontFamily: typography.fontBold,
-    color: '#9E9EAA',
+    color: colors.textMuted,
   },
 });

@@ -564,128 +564,13 @@ export default function TitleDetailScreen() {
           {/* TAB 1: OVERVIEW CONTENT (or Movie Content) */}
           {(!isSeries || activeTab === 'overview') && (
             <View>
-              {/* Quick Next Episode Logging Banner (For Series in Overview) */}
-              {isSeries && nextUnwatchedEpisode && (
-                <View style={styles.nextUpCard}>
-                  <View style={styles.nextUpThumbContainer}>
-                    <Image
-                      source={{
-                        uri:
-                          nextUnwatchedEpisode.stillPath ||
-                          item.backdropPath ||
-                          item.posterPath,
-                      }}
-                      style={styles.nextUpThumbImage}
-                      contentFit="cover"
-                      transition={150}
-                      cachePolicy="memory-disk"
-                    />
-                  </View>
-                  <View style={styles.nextUpLeft}>
-                    <View style={styles.nextUpTag}>
-                      <Text style={styles.nextUpTagText}>NEXT UP TO LOG</Text>
-                    </View>
-                    <Text style={styles.nextUpTitle} numberOfLines={1}>
-                      S{nextUnwatchedEpisode.seasonNumber} · E
-                      {nextUnwatchedEpisode.episodeNumber < 10
-                        ? `0${nextUnwatchedEpisode.episodeNumber}`
-                        : nextUnwatchedEpisode.episodeNumber}{' '}
-                      {nextUnwatchedEpisode.title}
-                    </Text>
-                    <Text style={styles.nextUpMeta}>
-                      {nextUnwatchedEpisode.runtime || item.runtime || 45} MIN
-                      {nextUnwatchedEpisode.airDate ? ` • ${nextUnwatchedEpisode.airDate}` : ''}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.nextUpLogBtn}
-                    onPress={() => {
-                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                      toggleEpisodeWatched(
-                        item,
-                        nextUnwatchedEpisode.seasonNumber,
-                        nextUnwatchedEpisode.episodeNumber,
-                        nextUnwatchedEpisode.title,
-                        nextUnwatchedEpisode.runtime
-                      );
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="checkmark-sharp" size={13} color="#FFFFFF" />
-                    <Text style={styles.nextUpLogBtnText}>
-                      LOG E{nextUnwatchedEpisode.episodeNumber}
-                    </Text>
-                  </TouchableOpacity>
+              {/* Synopsis / Story */}
+              {item.overview ? (
+                <View style={styles.sectionContainer}>
+                  <Text style={styles.sectionHeaderTitle}>SYNOPSIS</Text>
+                  <Text style={styles.overviewText}>{item.overview}</Text>
                 </View>
-              )}
-
-              {/* Release Radar: Upcoming Broadcast Banner */}
-              {isSeries && item.nextEpisodeToAir && (
-                <View style={styles.upcomingBroadcastCard}>
-                  <View style={styles.upcomingBroadcastTop}>
-                    <View style={styles.broadcastLeft}>
-                      <View style={styles.broadcastDot} />
-                      <Text style={styles.broadcastLabel}>RELEASE RADAR // NEXT BROADCAST</Text>
-                    </View>
-                    {item.network ? (
-                      <View style={styles.broadcastNetworkPill}>
-                        <Text style={styles.broadcastNetworkText}>{item.network.toUpperCase()}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-
-                  <View style={styles.broadcastDetailsRow}>
-                    <View style={styles.broadcastInfoCol}>
-                      <Text style={styles.broadcastEpisodeText} numberOfLines={1}>
-                        S{item.nextEpisodeToAir.seasonNumber < 10 ? `0${item.nextEpisodeToAir.seasonNumber}` : item.nextEpisodeToAir.seasonNumber} • E{item.nextEpisodeToAir.episodeNumber < 10 ? `0${item.nextEpisodeToAir.episodeNumber}` : item.nextEpisodeToAir.episodeNumber} {item.nextEpisodeToAir.title ? `"${item.nextEpisodeToAir.title}"` : ''}
-                      </Text>
-                      <Text style={styles.broadcastDateText}>
-                        {new Date(item.nextEpisodeToAir.airDate + 'T00:00:00').toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </Text>
-                    </View>
-
-                    {(() => {
-                      const countdown = computeCountdown(item.nextEpisodeToAir.airDate);
-                      return (
-                        <View
-                          style={[
-                            styles.broadcastCountdownPill,
-                            {
-                              borderColor: countdown.badgeColor,
-                              backgroundColor:
-                                countdown.daysUntil === 0
-                                  ? 'rgba(229, 9, 20, 0.15)'
-                                  : countdown.daysUntil === 1
-                                  ? 'rgba(245, 158, 11, 0.15)'
-                                  : 'rgba(59, 130, 246, 0.15)',
-                            },
-                          ]}
-                        >
-                          <Text style={[styles.broadcastCountdownText, { color: countdown.badgeColor }]}>
-                            {countdown.countdownLabel}
-                          </Text>
-                        </View>
-                      );
-                    })()}
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.broadcastRadarLink}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      router.push('/radar');
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.broadcastRadarLinkText}>VIEW COMPLETE AIRING SCHEDULE →</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+              ) : null}
 
               {/* Where to Watch */}
               <View style={styles.sectionContainer}>
@@ -713,11 +598,6 @@ export default function TitleDetailScreen() {
                 />
               )}
 
-              {/* Synopsis */}
-              <View style={styles.sectionContainer}>
-                <Text style={styles.sectionHeaderTitle}>SYNOPSIS</Text>
-                <Text style={styles.overviewText}>{item.overview}</Text>
-              </View>
 
               {/* Personal Journal / Notes */}
               <View style={styles.sectionContainer}>
