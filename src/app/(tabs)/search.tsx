@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 10,
+    paddingBottom: 12,
     backgroundColor: colors.void,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -846,7 +846,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 12,
-    height: 42,
+    height: 44,
     borderRadius: 2,
   },
   searchBarFocused: {
@@ -864,18 +864,18 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   suggestionsRow: {
-    marginTop: 8,
+    marginTop: 10,
   },
   suggestionsContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   suggestionPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 6.5,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -885,6 +885,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontMedium,
     fontSize: 11,
     color: colors.textSecondary,
+    includeFontPadding: false,
   },
 
   // Recent Searches & Trending Overlay
@@ -935,22 +936,23 @@ const styles = StyleSheet.create({
   },
   recentChipMain: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 6.5,
   },
   recentChipText: {
     fontFamily: typography.fontMedium,
     fontSize: 11.5,
     color: colors.textSecondary,
+    includeFontPadding: false,
   },
   recentChipRemove: {
     paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingVertical: 6.5,
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
   },
   trendingChip: {
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 7.5,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -960,6 +962,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontMedium,
     fontSize: 11.5,
     color: colors.textSecondary,
+    includeFontPadding: false,
   },
 
   // Streamlined Filter Section
@@ -978,13 +981,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 9,
+    paddingVertical: 10,
     borderRightWidth: 1,
     borderRightColor: colors.border,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
   segmentBtnActive: {
     backgroundColor: 'rgba(229, 9, 20, 0.12)',
-    borderBottomWidth: 2,
     borderBottomColor: colors.accent,
   },
   segmentBtnText: {
@@ -992,24 +996,26 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     letterSpacing: 0.8,
     color: colors.textSecondary,
+    includeFontPadding: false,
   },
   segmentBtnTextActive: {
     color: colors.accent,
   },
   genreAndSortRow: {
-    paddingVertical: 8,
+    paddingVertical: 10,
+    backgroundColor: colors.void,
   },
   genreAndSortContent: {
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   cycleSortPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -1024,6 +1030,7 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     letterSpacing: 0.6,
     color: colors.textSecondary,
+    includeFontPadding: false,
   },
   cycleSortTextActive: {
     color: colors.accent,
@@ -1031,8 +1038,8 @@ const styles = StyleSheet.create({
   inlineResetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
     backgroundColor: 'rgba(229, 9, 20, 0.12)',
     borderWidth: 1,
     borderColor: colors.accent,
@@ -1043,20 +1050,23 @@ const styles = StyleSheet.create({
     fontSize: 9,
     letterSpacing: 0.8,
     color: colors.accent,
+    includeFontPadding: false,
   },
   railDivider: {
     width: 1,
-    height: 18,
+    height: 16,
     backgroundColor: colors.border,
-    marginHorizontal: 3,
+    marginHorizontal: 1,
   },
   genrePill: {
-    paddingHorizontal: 11,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   genrePillActive: {
     borderColor: colors.accent,
@@ -1066,6 +1076,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontBold,
     fontSize: 9.5,
     letterSpacing: 0.6,
+    includeFontPadding: false,
   },
   genrePillTextActive: {
     color: colors.accent,
@@ -1076,7 +1087,7 @@ const styles = StyleSheet.create({
 
   // Grid & Content
   gridRow: {
-    justifyContent: 'space-between',
+    gap: GRID_GAP,
     marginBottom: 12,
   },
   searchContainer: {
@@ -1084,8 +1095,6 @@ const styles = StyleSheet.create({
   },
   searchFormatBar: {
     backgroundColor: colors.void,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   searchGridContent: {
     paddingHorizontal: 16,
@@ -1096,18 +1105,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    marginBottom: 6,
+    paddingVertical: 10,
+    marginBottom: 4,
   },
   searchResultsCount: {
     fontFamily: typography.fontBold,
     fontSize: 10,
     letterSpacing: 1.2,
     color: colors.accent,
+    includeFontPadding: false,
   },
   clearFormatBtn: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
@@ -1118,21 +1128,22 @@ const styles = StyleSheet.create({
     fontSize: 9,
     letterSpacing: 0.8,
     color: colors.textSecondary,
+    includeFontPadding: false,
   },
   genreCatalogueContainer: {
     flex: 1,
   },
   catalogueGridContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 14,
     paddingBottom: 110,
   },
   skeletonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: GRID_GAP,
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 14,
   },
   skeletonCard: {
     backgroundColor: colors.surfaceElevated,
