@@ -235,6 +235,44 @@ export const tmdbService = {
     return [];
   },
 
+  async getOnTheAirShows(page = 1): Promise<MediaItem[]> {
+    const apiKey = await this.getActiveApiKey();
+    if (!apiKey) return [];
+    try {
+      const url = `${TMDB_API_BASE}/tv/on_the_air?api_key=${apiKey}&page=${page}`;
+      const res = await fetchWithTimeout(url).catch(() => null);
+      if (res && res.ok) {
+        const data = await res.json();
+        const items: MediaItem[] = (data.results || [])
+          .map((r: any) => formatTmdbResult({ ...r, media_type: 'tv' }));
+        items.forEach((it) => runtimeMediaCache.set(it.id, it));
+        return items;
+      }
+    } catch (e) {
+      console.warn('TMDB on_the_air error:', e);
+    }
+    return [];
+  },
+
+  async getAiringTodayShows(page = 1): Promise<MediaItem[]> {
+    const apiKey = await this.getActiveApiKey();
+    if (!apiKey) return [];
+    try {
+      const url = `${TMDB_API_BASE}/tv/airing_today?api_key=${apiKey}&page=${page}`;
+      const res = await fetchWithTimeout(url).catch(() => null);
+      if (res && res.ok) {
+        const data = await res.json();
+        const items: MediaItem[] = (data.results || [])
+          .map((r: any) => formatTmdbResult({ ...r, media_type: 'tv' }));
+        items.forEach((it) => runtimeMediaCache.set(it.id, it));
+        return items;
+      }
+    } catch (e) {
+      console.warn('TMDB airing_today error:', e);
+    }
+    return [];
+  },
+
   async searchMedia(query: string, type: 'all' | 'movie' | 'tv' = 'all', page = 1): Promise<MediaItem[]> {
     const cleanQuery = query.trim().toLowerCase();
     if (!cleanQuery) return [];
@@ -697,6 +735,18 @@ function formatTmdbDetails(d: any, mediaType: 'movie' | 'tv'): MediaItem {
     ? ['Anime', ...rawGenres]
     : rawGenres;
 
+  const nextEpisodeToAir = d.next_episode_to_air
+    ? {
+        seasonNumber: d.next_episode_to_air.season_number,
+        episodeNumber: d.next_episode_to_air.episode_number,
+        title: d.next_episode_to_air.name || `Episode ${d.next_episode_to_air.episode_number}`,
+        airDate: d.next_episode_to_air.air_date || '',
+      }
+    : undefined;
+
+  const network = d.networks?.[0]?.name || undefined;
+  const status = d.status || undefined;
+
   return {
     id,
     tmdbId: d.id,
@@ -721,5 +771,8 @@ function formatTmdbDetails(d: any, mediaType: 'movie' | 'tv'): MediaItem {
     trailerKey,
     trailerUrl,
     belongs_to_collection,
+    nextEpisodeToAir,
+    network,
+    status,
   };
 }

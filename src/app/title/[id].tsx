@@ -33,6 +33,7 @@ import { TrailerCard } from '../../components/TrailerCard';
 import { FranchiseCollectionCard } from '../../components/FranchiseCollectionCard';
 import { trailerService } from '../../services/trailerService';
 import { INITIAL_MEDIA_ITEMS } from '../../services/mockData';
+import { computeCountdown } from '../../services/airingCalendarService';
 
 export default function TitleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -618,6 +619,74 @@ export default function TitleDetailScreen() {
                 </View>
               )}
 
+              {/* Release Radar: Upcoming Broadcast Banner */}
+              {isSeries && item.nextEpisodeToAir && (
+                <View style={styles.upcomingBroadcastCard}>
+                  <View style={styles.upcomingBroadcastTop}>
+                    <View style={styles.broadcastLeft}>
+                      <View style={styles.broadcastDot} />
+                      <Text style={styles.broadcastLabel}>RELEASE RADAR // NEXT BROADCAST</Text>
+                    </View>
+                    {item.network ? (
+                      <View style={styles.broadcastNetworkPill}>
+                        <Text style={styles.broadcastNetworkText}>{item.network.toUpperCase()}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.broadcastDetailsRow}>
+                    <View style={styles.broadcastInfoCol}>
+                      <Text style={styles.broadcastEpisodeText} numberOfLines={1}>
+                        S{item.nextEpisodeToAir.seasonNumber < 10 ? `0${item.nextEpisodeToAir.seasonNumber}` : item.nextEpisodeToAir.seasonNumber} • E{item.nextEpisodeToAir.episodeNumber < 10 ? `0${item.nextEpisodeToAir.episodeNumber}` : item.nextEpisodeToAir.episodeNumber} {item.nextEpisodeToAir.title ? `"${item.nextEpisodeToAir.title}"` : ''}
+                      </Text>
+                      <Text style={styles.broadcastDateText}>
+                        {new Date(item.nextEpisodeToAir.airDate + 'T00:00:00').toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </Text>
+                    </View>
+
+                    {(() => {
+                      const countdown = computeCountdown(item.nextEpisodeToAir.airDate);
+                      return (
+                        <View
+                          style={[
+                            styles.broadcastCountdownPill,
+                            {
+                              borderColor: countdown.badgeColor,
+                              backgroundColor:
+                                countdown.daysUntil === 0
+                                  ? 'rgba(229, 9, 20, 0.15)'
+                                  : countdown.daysUntil === 1
+                                  ? 'rgba(245, 158, 11, 0.15)'
+                                  : 'rgba(59, 130, 246, 0.15)',
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.broadcastCountdownText, { color: countdown.badgeColor }]}>
+                            {countdown.countdownLabel}
+                          </Text>
+                        </View>
+                      );
+                    })()}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.broadcastRadarLink}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      router.push('/radar');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.broadcastRadarLinkText}>VIEW COMPLETE AIRING SCHEDULE →</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {/* Where to Watch */}
               <View style={styles.sectionContainer}>
                 <Text style={styles.sectionHeaderTitle}>WHERE TO WATCH</Text>
@@ -790,6 +859,74 @@ export default function TitleDetailScreen() {
                     <Text style={styles.nextUpLogBtnText}>
                       LOG E{nextUnwatchedEpisode.episodeNumber}
                     </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Release Radar: Upcoming Broadcast Banner */}
+              {isSeries && item.nextEpisodeToAir && (
+                <View style={styles.upcomingBroadcastCard}>
+                  <View style={styles.upcomingBroadcastTop}>
+                    <View style={styles.broadcastLeft}>
+                      <View style={styles.broadcastDot} />
+                      <Text style={styles.broadcastLabel}>RELEASE RADAR // NEXT BROADCAST</Text>
+                    </View>
+                    {item.network ? (
+                      <View style={styles.broadcastNetworkPill}>
+                        <Text style={styles.broadcastNetworkText}>{item.network.toUpperCase()}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.broadcastDetailsRow}>
+                    <View style={styles.broadcastInfoCol}>
+                      <Text style={styles.broadcastEpisodeText} numberOfLines={1}>
+                        S{item.nextEpisodeToAir.seasonNumber < 10 ? `0${item.nextEpisodeToAir.seasonNumber}` : item.nextEpisodeToAir.seasonNumber} • E{item.nextEpisodeToAir.episodeNumber < 10 ? `0${item.nextEpisodeToAir.episodeNumber}` : item.nextEpisodeToAir.episodeNumber} {item.nextEpisodeToAir.title ? `"${item.nextEpisodeToAir.title}"` : ''}
+                      </Text>
+                      <Text style={styles.broadcastDateText}>
+                        {new Date(item.nextEpisodeToAir.airDate + 'T00:00:00').toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </Text>
+                    </View>
+
+                    {(() => {
+                      const countdown = computeCountdown(item.nextEpisodeToAir.airDate);
+                      return (
+                        <View
+                          style={[
+                            styles.broadcastCountdownPill,
+                            {
+                              borderColor: countdown.badgeColor,
+                              backgroundColor:
+                                countdown.daysUntil === 0
+                                  ? 'rgba(229, 9, 20, 0.15)'
+                                  : countdown.daysUntil === 1
+                                  ? 'rgba(245, 158, 11, 0.15)'
+                                  : 'rgba(59, 130, 246, 0.15)',
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.broadcastCountdownText, { color: countdown.badgeColor }]}>
+                            {countdown.countdownLabel}
+                          </Text>
+                        </View>
+                      );
+                    })()}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.broadcastRadarLink}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      router.push('/radar');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.broadcastRadarLinkText}>VIEW COMPLETE AIRING SCHEDULE →</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -1515,6 +1652,101 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontFamily: typography.fontBlack,
     letterSpacing: Platform.OS === 'ios' ? 0.6 : 0,
+    includeFontPadding: false,
+  },
+  upcomingBroadcastCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(229, 9, 20, 0.35)',
+    borderRadius: 2,
+    padding: 12,
+    marginBottom: 16,
+  },
+  upcomingBroadcastTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  broadcastLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  broadcastDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent,
+  },
+  broadcastLabel: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    color: colors.accent,
+    letterSpacing: Platform.OS === 'ios' ? 1.2 : 0,
+    includeFontPadding: false,
+  },
+  broadcastNetworkPill: {
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 2,
+  },
+  broadcastNetworkText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8,
+    color: colors.textPrimary,
+    letterSpacing: 0.5,
+    includeFontPadding: false,
+  },
+  broadcastDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  broadcastInfoCol: {
+    flex: 1,
+    marginRight: 10,
+  },
+  broadcastEpisodeText: {
+    fontFamily: typography.fontBold,
+    fontSize: 12.5,
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  broadcastDateText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 10,
+    color: colors.textMuted,
+  },
+  broadcastCountdownPill: {
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    borderWidth: 1,
+    borderRadius: 2,
+  },
+  broadcastCountdownText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    letterSpacing: 0.5,
+    includeFontPadding: false,
+  },
+  broadcastRadarLink: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderHairline,
+    alignItems: 'flex-start',
+  },
+  broadcastRadarLinkText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.accent,
+    letterSpacing: 0.8,
     includeFontPadding: false,
   },
   seasonsScrollRow: {

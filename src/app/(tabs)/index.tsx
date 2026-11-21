@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { useTracking } from '../../context/TrackingContext';
@@ -18,6 +18,7 @@ import { HomeDiscovery } from '../../components/HomeDiscovery';
 import { CategoryTabs, HomeCategory } from '../../components/CategoryTabs';
 import { ContinueWatchingShelf } from '../../components/ContinueWatchingShelf';
 import { HeroCarousel } from '../../components/HeroCarousel';
+import { airingCalendarService, AiringEpisode } from '../../services/airingCalendarService';
 
 function isAnimeMedia(m?: MediaItem | null): boolean {
   if (!m) return false;
@@ -60,12 +61,33 @@ export default function NowScreen() {
     watchlists,
   } = useTracking();
   const [selectedCategory, setSelectedCategory] = useState<HomeCategory>('all');
+  const [radarEpisodes, setRadarEpisodes] = useState<AiringEpisode[]>([]);
+
+  const trackedTvIds = useMemo(() => {
+    return Object.keys(tracking || {}).filter((id) => !id.startsWith('movie-'));
+  }, [tracking]);
+
+  const loadRadarEpisodes = useCallback(async () => {
+    try {
+      const data = await airingCalendarService.getReleaseRadar(trackedTvIds);
+      if (data.myRadar.length > 0) {
+        setRadarEpisodes(data.myRadar.slice(0, 3));
+      } else if (data.thisWeek.length > 0) {
+        setRadarEpisodes(data.thisWeek.slice(0, 3));
+      } else {
+        setRadarEpisodes(data.today.slice(0, 3));
+      }
+    } catch {
+      // Ignore
+    }
+  }, [trackedTvIds]);
 
   // Trigger live refresh whenever the NOW tab is focused
   useFocusEffect(
     useCallback(() => {
       refreshTracking();
-    }, [refreshTracking])
+      loadRadarEpisodes();
+    }, [refreshTracking, loadRadarEpisodes])
   );
 
   // Active and ongoing logged items (only ongoing series & want-to-watch movies; NO completed items)
@@ -273,22 +295,39 @@ export default function NowScreen() {
           </View>
         </View>
 
-        {/* 4. Upcoming — Next Episodes from Tracked Shows */}
-        {Object.values(tracking)
-          .filter(t => t.status === 'watching')
-          .map(t => {
-            const mediaItem = resolveMediaItem(t.titleId);
-            if (!mediaItem || !mediaItem.nextEpisodeToAir) return null;
-            const next = mediaItem.nextEpisodeToAir;
-            const airDate = new Date(next.airDate);
+        {/* 4. Release Radar // Airing Calendar Header */}
+        <View style={styles.radarHeaderRow}>
+          <View style={styles.radarHeaderLeft}>
+            <View style={styles.radarLivePulse} />
+            <Text style={styles.radarSectionTitle}>RELEASE RADAR</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.radarScheduleBtn}
+            onPress={() => {
+              Haptics.selectionAsync();
+              router.push('/radar');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.radarScheduleBtnText}>AIRING CALENDAR →</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 4. Upcoming Episodes from Radar */}
+        {radarEpisodes.length > 0 ? (
+          radarEpisodes.map((ep) => {
+            const airDate = new Date(ep.airDate + 'T00:00:00');
             const day = airDate.getDate();
             const month = airDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
             return (
               <TouchableOpacity
-                key={t.titleId}
+                key={ep.id}
                 style={styles.scheduleItem}
                 activeOpacity={0.8}
-                onPress={() => router.push({ pathname: '/title/[id]', params: { id: t.titleId } })}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  router.push({ pathname: '/title/[id]', params: { id: ep.showId } });
+                }}
               >
                 <View style={styles.scheduleDateCol}>
                   <Text style={styles.scheduleDay}>{day}</Text>
@@ -297,19 +336,56 @@ export default function NowScreen() {
                 <View style={styles.scheduleDivider} />
                 <View style={styles.scheduleInfo}>
                   <Text style={styles.scheduleTitle} numberOfLines={1}>
-                    {mediaItem.title} • {next.title}
+                    {ep.showTitle}
                   </Text>
                   <Text style={styles.scheduleSub} numberOfLines={1}>
-                    {mediaItem.network ? `${mediaItem.network} — ` : ''}S{next.seasonNumber}:E{next.episodeNumber}
+                    {ep.network ? `${ep.network} • ` : ''}S
+                    {ep.seasonNumber < 10 ? `0${ep.seasonNumber}` : ep.seasonNumber}:E
+                    {ep.episodeNumber < 10 ? `0${ep.episodeNumber}` : ep.episodeNumber}
+                    {ep.episodeTitle ? ` "${ep.episodeTitle}"` : ''}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={12} color={colors.textMuted} />
+                <View
+                  style={[
+                    styles.radarCountdownPill,
+                    {
+                      borderColor: ep.badgeColor,
+                      backgroundColor:
+                        ep.daysUntil === 0
+                          ? 'rgba(229, 9, 20, 0.15)'
+                          : ep.daysUntil === 1
+                          ? 'rgba(245, 158, 11, 0.15)'
+                          : 'rgba(59, 130, 246, 0.15)',
+                    },
+                  ]}
+                >
+                  <Text style={[styles.radarCountdownText, { color: ep.badgeColor }]}>
+                    {ep.countdownLabel}
+                  </Text>
+                </View>
               </TouchableOpacity>
             );
           })
-          .filter(Boolean)
-          .slice(0, 3)
-        }
+        ) : (
+          <TouchableOpacity
+            style={styles.radarBannerBox}
+            activeOpacity={0.8}
+            onPress={() => {
+              Haptics.selectionAsync();
+              router.push('/radar');
+            }}
+          >
+            <View style={styles.radarBannerLeft}>
+              <Text style={styles.radarBannerTitle}>BROADCAST RADAR // UPCOMING TV</Text>
+              <Text style={styles.radarBannerSub}>
+                Track weekly TV broadcasts, series premieres & episode release dates.
+              </Text>
+            </View>
+            <View style={styles.radarBannerBtn}>
+              <Text style={styles.radarBannerBtnText}>EXPLORE →</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* 5. Streaming & Discovery Feed */}
         <View style={styles.discoveryHeader}>
@@ -523,5 +599,102 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontBody,
     fontSize: 9.5,
     color: colors.textMuted,
+  },
+  radarHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  radarHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  radarLivePulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent,
+  },
+  radarSectionTitle: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    color: colors.textSecondary,
+    letterSpacing: Platform.OS === 'ios' ? 1.5 : 0,
+    includeFontPadding: false,
+  },
+  radarScheduleBtn: {
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(229, 9, 20, 0.35)',
+    backgroundColor: 'rgba(229, 9, 20, 0.08)',
+    borderRadius: 2,
+  },
+  radarScheduleBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.accent,
+    letterSpacing: 0.8,
+    includeFontPadding: false,
+  },
+  radarCountdownPill: {
+    paddingVertical: 2,
+    paddingHorizontal: 5,
+    borderRadius: 2,
+    borderWidth: 1,
+    marginLeft: 8,
+  },
+  radarCountdownText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8,
+    letterSpacing: 0.5,
+    includeFontPadding: false,
+  },
+  radarBannerBox: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    padding: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: 2,
+  },
+  radarBannerLeft: {
+    flex: 1,
+    marginRight: 10,
+  },
+  radarBannerTitle: {
+    fontFamily: typography.fontBold,
+    fontSize: 10.5,
+    color: colors.textPrimary,
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  radarBannerSub: {
+    fontFamily: typography.fontBody,
+    fontSize: 9.5,
+    color: colors.textMuted,
+  },
+  radarBannerBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+    borderRadius: 2,
+  },
+  radarBannerBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.accent,
+    letterSpacing: 0.8,
+    includeFontPadding: false,
   },
 });

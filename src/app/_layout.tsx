@@ -43,6 +43,13 @@ export default function RootLayout() {
               animation: 'slide_from_right',
             }}
           />
+          <Stack.Screen
+            name="radar"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
         </Stack>
       </TrackingProvider>
     </AuthProvider>
