@@ -14,6 +14,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, username?: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
   switchAccount: (userId: string) => Promise<void>;
   connectSupabase: (url: string, anonKey: string) => Promise<boolean>;
   disconnectSupabase: () => Promise<void>;
@@ -305,6 +306,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
+  // Delete Account (Google Play Mandate: Complete Purge of User & Data)
+  const deleteAccount = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    setLoading(true);
+    try {
+      const currentUserId = user.id;
+
+      // 1. Delete user-scoped data across local storage & Supabase
+      await databaseService.deleteUserData(currentUserId);
+
+      // 2. Remove credentials from local registry if present
+      try {
+        const credsRaw = await AsyncStorage.getItem(LOCAL_CREDS_KEY);
+        if (credsRaw && user.email) {
+          const creds = JSON.parse(credsRaw);
+          delete creds[user.email.toLowerCase()];
+          await AsyncStorage.setItem(LOCAL_CREDS_KEY, JSON.stringify(creds));
+        }
+      } catch {
+        // Ignore
+      }
+
+      // 3. Sign out of Supabase session
+      const supabase = supabaseService.getClient();
+      if (supabase) {
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          // Ignore
+        }
+      }
+
+      // 4. Reset to clean Guest user
+      setUser(GUEST_USER);
+      await databaseService.setCurrentUser(GUEST_USER);
+      setCloudSyncStatus('local_only');
+      const updatedAccounts = await databaseService.getRegisteredUsers();
+      setSavedAccounts(updatedAccounts);
+      setLoading(false);
+      return { success: true };
+    } catch (err: any) {
+      setLoading(false);
+      return { success: false, error: err.message || 'Failed to delete account.' };
+    }
+  }, [user]);
+
   // Switch between existing saved accounts on device
   const switchAccount = useCallback(async (targetUserId: string) => {
     if (targetUserId === 'guest') {
@@ -409,6 +455,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signUp,
     signOut,
+    deleteAccount,
     switchAccount,
     connectSupabase,
     disconnectSupabase,

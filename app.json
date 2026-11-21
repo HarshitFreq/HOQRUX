@@ -10,6 +10,7 @@
     "backgroundColor": "#050507",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.harshit.hoqrux",
       "icon": {
         "light": "./assets/icon-light.png",
         "dark": "./assets/icon-dark.png",
@@ -17,17 +18,19 @@
       }
     },
     "android": {
+      "package": "com.harshit.hoqrux",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#050507",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": true
     },
     "androidStatusBar": {
       "barStyle": "light-content",
-      "backgroundColor": "#00000000",
+      "backgroundColor": "#050507",
       "translucent": true
     },
     "web": {

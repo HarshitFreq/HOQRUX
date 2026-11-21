@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Keyboard,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -266,6 +267,20 @@ export default function ExploreScreen() {
     setHasMoreSearch(true);
     Keyboard.dismiss();
   };
+
+  // Android Hardware Back Button: Clear active search before leaving
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const onBackPress = () => {
+      if (query.trim().length > 0) {
+        handleClearQuery();
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [query]);
 
   const applySuggestion = (s: string) => {
     Haptics.selectionAsync();

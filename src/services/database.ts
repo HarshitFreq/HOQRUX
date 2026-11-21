@@ -102,6 +102,35 @@ export const databaseService = {
     }
   },
 
+  async deleteUserData(userId: string): Promise<void> {
+    try {
+      // 1. Delete user-scoped keys
+      await AsyncStorage.multiRemove([
+        getUserKey(userId, 'tracking'),
+        getUserKey(userId, 'watchlists'),
+        getUserKey(userId, 'history'),
+        getUserKey(userId, 'cache'),
+      ]);
+
+      // 2. Remove from registered users list
+      const existing = await this.getRegisteredUsers();
+      const filtered = existing.filter((u) => u.id !== userId);
+      await AsyncStorage.setItem(GLOBAL_KEYS.REGISTERED_USERS, JSON.stringify(filtered));
+
+      // 3. Delete from Supabase cloud if connected and user is not guest
+      const supabase = supabaseService.getClient();
+      if (supabase && userId !== 'guest') {
+        try {
+          await supabase.from('user_tracking').delete().eq('user_id', userId);
+        } catch (e) {
+          console.warn('[Database] Cloud delete error:', e);
+        }
+      }
+    } catch (e) {
+      console.error('[Database] Failed to delete user data:', e);
+    }
+  },
+
   // ==========================================================================
   // User Data Migration (Guest -> Registered Account)
   // ==========================================================================
