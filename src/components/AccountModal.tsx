@@ -31,11 +31,9 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
   const {
     user,
     isAuthenticated,
-    savedAccounts,
     signIn,
     signUp,
     signOut,
-    switchAccount,
   } = useAuth();
 
   const { tracking, stats, watchlists, refreshTracking } = useTracking();
@@ -125,14 +123,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
     );
   };
 
-  const handleSwitch = async (targetId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await switchAccount(targetId);
-    await refreshTracking();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onClose();
-  };
-
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -188,38 +178,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
                     <Text style={styles.metricLbl}>LOGS</Text>
                   </View>
                 </View>
-
-                {/* Saved Profiles Switcher (If multiple on device) */}
-                {savedAccounts.length > 1 && (
-                  <View style={styles.switchSection}>
-                    <Text style={styles.sectionLabel}>SAVED PROFILES</Text>
-                    {savedAccounts.map((acc) => {
-                      const isCurrent = acc.id === user.id;
-                      return (
-                        <TouchableOpacity
-                          key={acc.id}
-                          style={[styles.accountRow, isCurrent && styles.accountRowActive]}
-                          onPress={() => !isCurrent && handleSwitch(acc.id)}
-                          activeOpacity={0.7}
-                          disabled={isCurrent}
-                        >
-                          <View style={styles.accountRowLeft}>
-                            <Ionicons
-                              name={isCurrent ? 'radio-button-on' : 'radio-button-off'}
-                              size={14}
-                              color={isCurrent ? colors.accent : colors.textMuted}
-                              style={{ marginRight: 8 }}
-                            />
-                            <Text style={[styles.accountRowName, isCurrent && styles.accountRowNameActive]}>
-                              {acc.username || acc.email}
-                            </Text>
-                          </View>
-                          {isCurrent && <Text style={styles.activeTag}>ACTIVE</Text>}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
 
                 {/* Sign Out Button */}
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut} activeOpacity={0.7}>
@@ -514,52 +472,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontBold,
     fontSize: 12,
     letterSpacing: 1.2,
-  },
-
-  // Switch Profiles Section
-  switchSection: {
-    backgroundColor: '#0D0D14',
-    borderWidth: 1,
-    borderColor: '#22222E',
-    padding: 12,
-  },
-  sectionLabel: {
-    color: colors.textMuted,
-    fontFamily: typography.fontBold,
-    fontSize: 9,
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  accountRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#181824',
-  },
-  accountRowActive: {
-    backgroundColor: '#151522',
-  },
-  accountRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  accountRowName: {
-    color: colors.textSecondary,
-    fontFamily: typography.fontBody,
-    fontSize: 12,
-  },
-  accountRowNameActive: {
-    color: colors.textPrimary,
-    fontFamily: typography.fontBold,
-  },
-  activeTag: {
-    color: colors.accent,
-    fontFamily: typography.fontBold,
-    fontSize: 9,
-    letterSpacing: 1,
   },
 
   // Logout Button

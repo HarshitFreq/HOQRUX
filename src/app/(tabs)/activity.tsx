@@ -22,7 +22,7 @@ import { AccountModal } from '../../components/AccountModal';
 import { StatCard } from '../../components/StatCard';
 
 export default function ActivityScreen() {
-  const { user, isAuthenticated, signOut, deleteAccount, savedAccounts, switchAccount } = useAuth();
+  const { user, isAuthenticated, signOut, deleteAccount } = useAuth();
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   const {
@@ -268,36 +268,6 @@ export default function ActivityScreen() {
                   <Text style={styles.metricLbl}>LOGBOOK</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Saved accounts switcher if multiple profiles saved on device */}
-              {savedAccounts.length > 1 && (
-                <View style={styles.switcherBox}>
-                  <Text style={styles.switcherLabel}>SWITCH PROFILE:</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.switcherScroll}>
-                    {savedAccounts.map((acc) => {
-                      const isCurrent = acc.id === user.id;
-                      return (
-                        <TouchableOpacity
-                          key={acc.id}
-                          style={[styles.accountPill, isCurrent && styles.accountPillActive]}
-                          onPress={async () => {
-                            if (!isCurrent) {
-                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                              await switchAccount(acc.id);
-                              await refreshTracking();
-                            }
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[styles.accountPillText, isCurrent && styles.accountPillTextActive]}>
-                            {acc.username || acc.email}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              )}
             </View>
           ) : (
             <View style={styles.guestDetails}>
@@ -889,46 +859,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: 20,
     backgroundColor: colors.border,
-  },
-
-  // Profile Switcher
-  switcherBox: {
-    marginTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 8,
-  },
-  switcherLabel: {
-    fontFamily: typography.fontBold,
-    fontSize: 8.5,
-    color: colors.textMuted,
-    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
-    includeFontPadding: false,
-    marginBottom: 6,
-  },
-  switcherScroll: {
-    flexDirection: 'row',
-  },
-  accountPill: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: 2,
-    marginRight: 6,
-  },
-  accountPillActive: {
-    borderColor: colors.accent,
-    backgroundColor: '#1E0E12',
-  },
-  accountPillText: {
-    fontFamily: typography.fontBold,
-    fontSize: 9,
-    color: colors.textMuted,
-  },
-  accountPillTextActive: {
-    color: colors.accent,
   },
 
   guestSignInBtn: {

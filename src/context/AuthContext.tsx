@@ -9,13 +9,11 @@ interface AuthContextType {
   isGuest: boolean;
   isCloudConnected: boolean;
   cloudSyncStatus: 'synced' | 'syncing' | 'offline' | 'local_only';
-  savedAccounts: UserAccount[];
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, username?: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<{ success: boolean; error?: string }>;
-  switchAccount: (userId: string) => Promise<void>;
   connectSupabase: (url: string, anonKey: string) => Promise<boolean>;
   disconnectSupabase: () => Promise<void>;
   triggerSync: () => Promise<{ success: boolean; message: string }>;
@@ -27,7 +25,6 @@ const LOCAL_CREDS_KEY = '@hoqrux_local_creds_v2';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserAccount>(GUEST_USER);
-  const [savedAccounts, setSavedAccounts] = useState<UserAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'local_only'>('local_only');
 
@@ -39,13 +36,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     async function loadSession() {
       try {
-        const [currentUser, accounts] = await Promise.all([
-          databaseService.getCurrentUser(),
-          databaseService.getRegisteredUsers(),
-        ]);
-
+        const currentUser = await databaseService.getCurrentUser();
         if (!isMounted) return;
-        setSavedAccounts(accounts);
 
         // Check if Supabase has an active session
         const supabase = supabaseService.getClient();
@@ -125,8 +117,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(loggedInUser);
           await databaseService.setCurrentUser(loggedInUser);
           await databaseService.migrateGuestDataToUser(loggedInUser.id);
-          const updatedAccounts = await databaseService.getRegisteredUsers();
-          setSavedAccounts(updatedAccounts);
           setCloudSyncStatus('synced');
           setLoading(false);
           void databaseService.fullCloudSync(loggedInUser);
@@ -159,8 +149,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(localUser);
         await databaseService.setCurrentUser(localUser);
         await databaseService.migrateGuestDataToUser(localUser.id);
-        const updatedAccounts = await databaseService.getRegisteredUsers();
-        setSavedAccounts(updatedAccounts);
         setCloudSyncStatus(isCloudConnected ? 'synced' : 'local_only');
         setLoading(false);
         if (isCloudConnected) {
@@ -187,8 +175,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(newUser);
       await databaseService.setCurrentUser(newUser);
       await databaseService.migrateGuestDataToUser(newUser.id);
-      const updatedAccounts = await databaseService.getRegisteredUsers();
-      setSavedAccounts(updatedAccounts);
       setCloudSyncStatus(isCloudConnected ? 'synced' : 'local_only');
       setLoading(false);
       if (isCloudConnected) {
@@ -239,8 +225,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(newUser);
           await databaseService.setCurrentUser(newUser);
           await databaseService.migrateGuestDataToUser(newUser.id);
-          const updatedAccounts = await databaseService.getRegisteredUsers();
-          setSavedAccounts(updatedAccounts);
           setCloudSyncStatus('synced');
           setLoading(false);
           void databaseService.fullCloudSync(newUser);
@@ -275,8 +259,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(newUser);
       await databaseService.setCurrentUser(newUser);
       await databaseService.migrateGuestDataToUser(newUser.id);
-      const updatedAccounts = await databaseService.getRegisteredUsers();
-      setSavedAccounts(updatedAccounts);
       setCloudSyncStatus(isCloudConnected ? 'synced' : 'local_only');
       setLoading(false);
       if (isCloudConnected) {
@@ -341,8 +323,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(GUEST_USER);
       await databaseService.setCurrentUser(GUEST_USER);
       setCloudSyncStatus('local_only');
-      const updatedAccounts = await databaseService.getRegisteredUsers();
-      setSavedAccounts(updatedAccounts);
       setLoading(false);
       return { success: true };
     } catch (err: any) {
@@ -350,26 +330,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: err.message || 'Failed to delete account.' };
     }
   }, [user]);
-
-  // Switch between existing saved accounts on device
-  const switchAccount = useCallback(async (targetUserId: string) => {
-    if (targetUserId === 'guest') {
-      await signOut();
-      return;
-    }
-    const accounts = await databaseService.getRegisteredUsers();
-    const target = accounts.find((a) => a.id === targetUserId);
-    if (target) {
-      setLoading(true);
-      setUser(target);
-      await databaseService.setCurrentUser(target);
-      setCloudSyncStatus(supabaseService.isConfigured() ? 'synced' : 'local_only');
-      setLoading(false);
-      if (supabaseService.isConfigured()) {
-        void databaseService.fullCloudSync(target);
-      }
-    }
-  }, [signOut]);
 
   // Connect Supabase Cloud
   const connectSupabase = useCallback(async (url: string, anonKey: string): Promise<boolean> => {
@@ -450,13 +410,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isGuest: Boolean(!user || user.isGuest),
     isCloudConnected,
     cloudSyncStatus,
-    savedAccounts,
     loading,
     signIn,
     signUp,
     signOut,
     deleteAccount,
-    switchAccount,
     connectSupabase,
     disconnectSupabase,
     triggerSync,
