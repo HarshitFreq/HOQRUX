@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,9 +21,21 @@ import { Watchlist, MediaItem } from '../../services/types';
 
 export default function ListsScreen() {
   const { watchlists, createWatchlist, resolveMediaItem, refreshTracking } = useTracking();
+  const { width: windowWidth } = useWindowDimensions();
   const [modalVisible, setModalVisible] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [newListDesc, setNewListDesc] = useState('');
+
+  // 5 mini posters spanning the width of the card symmetrically
+  // 32px screen padding + 28px card padding + 32px gaps (4 * 8px) = 92px
+  const miniPosterWidth = useMemo(
+    () => Math.floor((windowWidth - 92) / 5),
+    [windowWidth]
+  );
+  const miniPosterHeight = useMemo(
+    () => Math.floor(miniPosterWidth * 1.5),
+    [miniPosterWidth]
+  );
 
   // Auto-refresh when screen gains focus
   useFocusEffect(
@@ -78,7 +91,13 @@ export default function ListsScreen() {
         {posterItems.length > 0 ? (
           <View style={styles.posterRow}>
             {posterItems.map((item, idx) => (
-              <View key={`${item.id}-${idx}`} style={styles.posterItem}>
+              <View
+                key={`${item.id}-${idx}`}
+                style={[
+                  styles.posterItem,
+                  { width: miniPosterWidth, height: miniPosterHeight },
+                ]}
+              >
                 <Image
                   source={{ uri: item.posterPath }}
                   style={styles.collagePoster}
@@ -294,8 +313,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   collagePoster: {
-    width: 52,
-    height: 78,
+    width: '100%',
+    height: '100%',
   },
   emptyCassetteBox: {
     paddingVertical: 12,
