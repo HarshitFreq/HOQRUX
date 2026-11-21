@@ -19,7 +19,6 @@ import { typography } from '../../theme/typography';
 import { useTracking } from '../../context/TrackingContext';
 import { useAuth } from '../../context/AuthContext';
 import { AccountModal } from '../../components/AccountModal';
-import { StatCard } from '../../components/StatCard';
 
 export default function ActivityScreen() {
   const { user, isAuthenticated, signOut, deleteAccount } = useAuth();
@@ -169,20 +168,28 @@ export default function ActivityScreen() {
     });
   }, [history]);
 
-  // Actual dynamic average score calculated from user's rated titles
-  const { averageRatingText, ratedCount } = useMemo(() => {
-    const rated = Object.values(tracking || {}).filter(
-      (t) => typeof t.rating === 'number' && t.rating > 0
-    );
-    if (rated.length === 0) {
-      return { averageRatingText: '—', ratedCount: 0 };
-    }
-    const sum = rated.reduce((acc, t) => acc + (t.rating || 0), 0);
+  // Proportional format distribution (Series vs Films vs Anime)
+  const formatDistribution = useMemo(() => {
+    let seriesCount = 0;
+    let moviesCount = 0;
+    let animeCount = 0;
+    Object.values(tracking || {}).forEach((tr) => {
+      const it = resolveMediaItem(tr.titleId);
+      if (it?.type === 'tv') seriesCount++;
+      else if (it?.type === 'movie') moviesCount++;
+      else if (it?.type === 'anime') animeCount++;
+      else seriesCount++;
+    });
+    const total = seriesCount + moviesCount + animeCount || 1;
     return {
-      averageRatingText: (sum / rated.length).toFixed(1) + '★',
-      ratedCount: rated.length,
+      seriesPct: Math.round((seriesCount / total) * 100),
+      moviesPct: Math.round((moviesCount / total) * 100),
+      animePct: Math.round((animeCount / total) * 100),
+      seriesCount,
+      moviesCount,
+      animeCount,
     };
-  }, [tracking]);
+  }, [tracking, resolveMediaItem]);
 
   const trackedCount = Object.keys(tracking || {}).length;
   const listCount = watchlists?.length || 0;
@@ -482,54 +489,149 @@ export default function ActivityScreen() {
           </ScrollView>
         )}
 
-        {/* Segment 2: Viewing Stats & Habits */}
+        {/* Segment 2: Minimal Viewing Ledger & Habits */}
         {activeSegment === 'stats' && (
           <ScrollView
             style={styles.scrollList}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Top Stat Matrix */}
-            <View style={styles.statsGrid}>
-              <View style={styles.statsRow}>
-                <StatCard
-                  label="Time Logged"
-                  value={`${stats.totalHoursWatched}h`}
-                  subValue="Watch time"
-                />
-                <StatCard
-                  label="Episodes"
-                  value={stats.totalEpisodesWatched}
-                  subValue="Watched"
-                  accentColor={colors.accent}
-                />
+            {/* 1. Monolithic Hero Time & Volume Ledger */}
+            <View style={styles.minimalLedgerCard}>
+              {/* Primary Lifetime Time */}
+              <View style={styles.heroTimeContainer}>
+                <Text style={styles.heroTimeOverline}>LIFETIME WATCH TIME</Text>
+                <View style={styles.heroTimeRow}>
+                  <Text style={styles.heroTimeValue}>{stats.totalHoursWatched}</Text>
+                  <Text style={styles.heroTimeUnit}>HOURS</Text>
+                </View>
               </View>
-              <View style={styles.statsRow}>
-                <StatCard
-                  label="Films"
-                  value={stats.totalMoviesWatched}
-                  subValue="Completed"
-                />
-                <StatCard
-                  label="Average Rating"
-                  value={averageRatingText}
-                  subValue={ratedCount > 0 ? `${ratedCount} rated` : 'Mean score'}
-                  accentColor={colors.starYellow}
-                />
+
+              <View style={styles.ledgerHairline} />
+
+              {/* 3-Column Volume Breakdown (Zero Boxes, Pure Typographic Grid) */}
+              <View style={styles.volumeGridRow}>
+                <View style={styles.volumeCol}>
+                  <Text style={styles.volumeNumber}>{stats.totalEpisodesWatched}</Text>
+                  <Text style={styles.volumeLabel}>EPISODES</Text>
+                </View>
+                <View style={styles.volumeDivider} />
+                <View style={styles.volumeCol}>
+                  <Text style={styles.volumeNumber}>{stats.totalMoviesWatched}</Text>
+                  <Text style={styles.volumeLabel}>FILMS</Text>
+                </View>
+                <View style={styles.volumeDivider} />
+                <View style={styles.volumeCol}>
+                  <Text style={styles.volumeNumber}>{trackedCount}</Text>
+                  <Text style={styles.volumeLabel}>IN ARCHIVE</Text>
+                </View>
               </View>
             </View>
 
-            {/* Streak & Cadence */}
-            <View style={styles.streakSection}>
-              <View style={styles.streakHeader}>
-                <Text style={styles.sectionHeaderTitle}>VIEWING CADENCE</Text>
-                <Text style={styles.streakBadge}>{stats.streakDays}D STREAK</Text>
+            {/* 2. Format Distribution (Clean Segmented Ratio Bar) */}
+            <View style={styles.minimalSectionCard}>
+              <View style={styles.minimalSectionHeader}>
+                <Text style={styles.minimalSectionTitle}>MEDIA SPLIT</Text>
+                <Text style={styles.minimalSectionMeta}>
+                  {formatDistribution.seriesPct}% SERIES · {formatDistribution.moviesPct}% FILMS
+                  {formatDistribution.animePct > 0 ? ` · ${formatDistribution.animePct}% ANIME` : ''}
+                </Text>
               </View>
-              <Text style={styles.streakSubText}>
-                {history.length > 0
-                  ? `${Math.min(history.length, 14)} viewing sessions registered.`
-                  : 'Start watching to build your cadence.'}
-              </Text>
+
+              <View style={styles.ratioBarTrack}>
+                <View
+                  style={[
+                    styles.ratioBarFill,
+                    {
+                      width: `${formatDistribution.seriesPct}%`,
+                      backgroundColor: colors.textPrimary,
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.ratioBarFill,
+                    {
+                      width: `${formatDistribution.moviesPct}%`,
+                      backgroundColor: colors.accent,
+                    },
+                  ]}
+                />
+                {formatDistribution.animePct > 0 && (
+                  <View
+                    style={[
+                      styles.ratioBarFill,
+                      {
+                        width: `${formatDistribution.animePct}%`,
+                        backgroundColor: colors.starYellow,
+                      },
+                    ]}
+                  />
+                )}
+              </View>
+
+              <View style={styles.ratioLegendRow}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.textPrimary }]} />
+                  <Text style={styles.legendText}>SERIES ({formatDistribution.seriesCount})</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
+                  <Text style={styles.legendText}>FILMS ({formatDistribution.moviesCount})</Text>
+                </View>
+                {formatDistribution.animePct > 0 && (
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: colors.starYellow }]} />
+                    <Text style={styles.legendText}>ANIME ({formatDistribution.animeCount})</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* 3. Top Genres (Minimal Typographic Lines) */}
+            {stats.topGenres.length > 0 && (
+              <View style={styles.minimalSectionCard}>
+                <View style={styles.minimalSectionHeader}>
+                  <Text style={styles.minimalSectionTitle}>TOP GENRES</Text>
+                  <Text style={styles.minimalSectionMeta}>PRIMARY TASTE</Text>
+                </View>
+
+                <View style={styles.genreListWrap}>
+                  {stats.topGenres.map((g, idx) => (
+                    <View key={g.genre} style={styles.genreItemRow}>
+                      <View style={styles.genreHeaderRow}>
+                        <Text style={styles.genreNameText}>{g.genre.toUpperCase()}</Text>
+                        <Text style={styles.genrePctText}>{g.percentage}%</Text>
+                      </View>
+                      <View style={styles.genreBarTrack}>
+                        <View
+                          style={[
+                            styles.genreBarFill,
+                            {
+                              width: `${g.percentage}%`,
+                              backgroundColor:
+                                idx === 0
+                                  ? colors.accent
+                                  : idx === 1
+                                  ? colors.textPrimary
+                                  : colors.borderLight,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* 4. Viewing Cadence (14-Day Micro Activity) */}
+            <View style={styles.minimalSectionCard}>
+              <View style={styles.minimalSectionHeader}>
+                <Text style={styles.minimalSectionTitle}>14-DAY CADENCE</Text>
+                <Text style={styles.minimalStreakBadge}>{stats.streakDays}D STREAK</Text>
+              </View>
+
               <View style={styles.cadenceChart}>
                 {cadenceData.map((day) => (
                   <View
@@ -537,50 +639,25 @@ export default function ActivityScreen() {
                     style={[
                       styles.cadenceBar,
                       {
-                        height: Math.max(day.heightRatio * 32, 4),
+                        height: Math.max(day.heightRatio * 28, 4),
                         backgroundColor: day.isToday
                           ? colors.accent
                           : day.hasActivity
-                          ? '#FFFFFF'
-                          : '#1C1C24',
+                          ? colors.textPrimary
+                          : '#191922',
                       },
                     ]}
                   />
                 ))}
               </View>
+
               <View style={styles.cadenceLegendRow}>
                 <Text style={styles.cadenceLegendText}>14D AGO</Text>
+                <Text style={styles.cadenceLegendText}>
+                  {history.length} {history.length === 1 ? 'SESSION' : 'SESSIONS'} LOGGED
+                </Text>
                 <Text style={styles.cadenceLegendText}>TODAY</Text>
               </View>
-            </View>
-
-            {/* Genre Breakdown */}
-            <View style={styles.genreBreakdownSection}>
-              <Text style={styles.sectionHeaderTitle}>TOP GENRES</Text>
-              {stats.topGenres.map((g) => (
-                <View key={g.genre} style={styles.genreBarRow}>
-                  <View style={styles.genreLabelRow}>
-                    <Text style={styles.genreName}>{g.genre.toUpperCase()}</Text>
-                    <Text style={styles.genrePct}>{g.percentage}%</Text>
-                  </View>
-                  <View style={styles.genreTrack}>
-                    <View
-                      style={[
-                        styles.genreFill,
-                        {
-                          width: `${g.percentage}%`,
-                          backgroundColor:
-                            g.genre === 'Drama'
-                              ? '#FFFFFF'
-                              : g.genre === 'Sci-Fi'
-                              ? colors.accent
-                              : colors.borderLight,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              ))}
             </View>
           </ScrollView>
         )}
@@ -1060,52 +1137,185 @@ const styles = StyleSheet.create({
   deleteIconBtn: {
     padding: 4,
   },
-  statsGrid: {
-    gap: 10,
-    marginBottom: 14,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  streakSection: {
+  minimalLedgerCard: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 2,
-    padding: 14,
-    marginBottom: 14,
+    marginBottom: 12,
   },
-  streakHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  heroTimeContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+  },
+  heroTimeOverline: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    letterSpacing: Platform.OS === 'ios' ? 1.5 : 0.8,
+    color: colors.textSecondary,
+    includeFontPadding: false,
     marginBottom: 6,
   },
-  sectionHeaderTitle: {
-    fontFamily: typography.fontBold,
-    fontSize: 10,
-    color: colors.textSecondary,
-    letterSpacing: Platform.OS === 'ios' ? 1.5 : 0,
-    includeFontPadding: false,
+  heroTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
   },
-  streakBadge: {
+  heroTimeValue: {
     fontFamily: typography.fontBlack,
-    fontSize: 10,
-    color: colors.accent,
+    fontSize: 44,
+    color: colors.textPrimary,
     letterSpacing: Platform.OS === 'ios' ? 1 : 0,
     includeFontPadding: false,
   },
-  streakSubText: {
-    fontFamily: typography.fontBody,
-    fontSize: 11,
+  heroTimeUnit: {
+    fontFamily: typography.fontBold,
+    fontSize: 13,
+    color: colors.accent,
+    letterSpacing: 1.2,
+    includeFontPadding: false,
+  },
+  ledgerHairline: {
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  volumeGridRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  volumeCol: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  volumeNumber: {
+    fontFamily: typography.fontBlack,
+    fontSize: 18,
+    color: colors.textPrimary,
+    letterSpacing: Platform.OS === 'ios' ? 0.5 : 0,
+    includeFontPadding: false,
+    marginBottom: 3,
+  },
+  volumeLabel: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
     color: colors.textMuted,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0.5,
+    includeFontPadding: false,
+  },
+  volumeDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: colors.border,
+  },
+  minimalSectionCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 2,
+    padding: 16,
     marginBottom: 12,
+  },
+  minimalSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  minimalSectionTitle: {
+    fontFamily: typography.fontBold,
+    fontSize: 10,
+    color: colors.textPrimary,
+    letterSpacing: Platform.OS === 'ios' ? 1.5 : 0.8,
+    includeFontPadding: false,
+  },
+  minimalSectionMeta: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    color: colors.textSecondary,
+    letterSpacing: 0.8,
+    includeFontPadding: false,
+  },
+  minimalStreakBadge: {
+    fontFamily: typography.fontBlack,
+    fontSize: 9.5,
+    color: colors.accent,
+    letterSpacing: 1,
+    includeFontPadding: false,
+  },
+  ratioBarTrack: {
+    height: 6,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 1,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  ratioBarFill: {
+    height: '100%',
+  },
+  ratioLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 1,
+  },
+  legendText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    color: colors.textSecondary,
+    letterSpacing: 0.6,
+    includeFontPadding: false,
+  },
+  genreListWrap: {
+    gap: 10,
+  },
+  genreItemRow: {
+    marginBottom: 2,
+  },
+  genreHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  genreNameText: {
+    fontFamily: typography.fontBold,
+    fontSize: 10,
+    color: colors.textPrimary,
+    letterSpacing: Platform.OS === 'ios' ? 0.8 : 0,
+    includeFontPadding: false,
+  },
+  genrePctText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    color: colors.textMuted,
+    includeFontPadding: false,
+  },
+  genreBarTrack: {
+    height: 3,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 1,
+    overflow: 'hidden',
+  },
+  genreBarFill: {
+    height: '100%',
   },
   cadenceChart: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: 38,
+    height: 34,
     gap: 5,
   },
   cadenceBar: {
@@ -1115,8 +1325,8 @@ const styles = StyleSheet.create({
   cadenceLegendRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 6,
-    paddingHorizontal: 2,
+    alignItems: 'center',
+    marginTop: 8,
   },
   cadenceLegendText: {
     fontFamily: typography.fontBold,
@@ -1124,40 +1334,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     letterSpacing: 0.8,
     includeFontPadding: false,
-  },
-  genreBreakdownSection: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 2,
-    padding: 14,
-  },
-  genreBarRow: {
-    marginTop: 10,
-  },
-  genreLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  genreName: {
-    fontFamily: typography.fontBold,
-    fontSize: 10,
-    color: colors.textPrimary,
-    letterSpacing: Platform.OS === 'ios' ? 0.8 : 0,
-    includeFontPadding: false,
-  },
-  genrePct: {
-    fontFamily: typography.fontMedium,
-    fontSize: 10,
-    color: colors.textMuted,
-  },
-  genreTrack: {
-    height: 2,
-    backgroundColor: colors.border,
-  },
-  genreFill: {
-    height: '100%',
   },
 
   // About, Legal & Data Purge Styles
