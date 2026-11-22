@@ -25,6 +25,19 @@ const DEFAULT_TMDB_API_KEY = API_CONFIG.TMDB.API_KEY;
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes TTL
 const SUBSCRIPTIONS_KEY = '@hoqrux_user_subscriptions_v1';
 
+async function fetchWithTimeout(url: string, timeoutMs = 6000): Promise<Response | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return res;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export type StreamingPlatformId = 'netflix' | 'prime' | 'jiohotstar' | 'crunchyroll';
 
 export interface StreamingPlatformConfig {
@@ -195,8 +208,8 @@ export const streamingPlatformService = {
         if (config.isAnimeOnly) {
           // Top Anime on Crunchyroll: tv endpoint with with_genres=16 (Animation)
           const url = `${TMDB_API_BASE}/discover/tv?api_key=${apiKey}&watch_region=${encRegion}&with_watch_providers=${encProvider}&with_genres=16&sort_by=popularity.desc&page=1`;
-          const res = await fetch(url);
-          const data = res.ok ? await res.json() : { results: [] };
+          const res = await fetchWithTimeout(url);
+          const data = res && res.ok ? await res.json().catch(() => ({ results: [] })) : { results: [] };
           const items: MediaItem[] = (data.results || []).map((r: any) =>
             formatRowItem(r, 'tv')
           );
@@ -215,8 +228,8 @@ export const streamingPlatformService = {
         const tvUrl = `${TMDB_API_BASE}/discover/tv?api_key=${apiKey}&watch_region=${encRegion}&with_watch_providers=${encProvider}&sort_by=popularity.desc&page=1`;
 
         const [movieRes, tvRes] = await Promise.all([
-          fetch(movieUrl).then((r) => (r.ok ? r.json() : { results: [] })),
-          fetch(tvUrl).then((r) => (r.ok ? r.json() : { results: [] })),
+          fetchWithTimeout(movieUrl).then((r) => (r && r.ok ? r.json().catch(() => ({ results: [] })) : { results: [] })),
+          fetchWithTimeout(tvUrl).then((r) => (r && r.ok ? r.json().catch(() => ({ results: [] })) : { results: [] })),
         ]);
 
         const movies: MediaItem[] = (movieRes.results || []).map((r: any) =>

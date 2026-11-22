@@ -122,6 +122,19 @@ export function getCachedDiscovery(region = 'IN'): HomeDiscoveryData | null {
   return null;
 }
 
+async function fetchWithTimeout(url: string, timeoutMs = 6000): Promise<Response | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return res;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Persists discovery payload to both in-memory cache and sessionStorage
  */
@@ -235,19 +248,28 @@ export async function fetchHomeDiscovery(
   try {
     // 2. Parallel Fetching: 4 TMDb endpoints + AniList trending anime in a single round-trip
     const [trendingRes, popularRes, topRatedRes, upcomingRes, liveAnime] = await Promise.all([
-      fetch(`${TMDB_API_BASE}/trending/all/day?api_key=${apiKey}`),
-      fetch(`${TMDB_API_BASE}/movie/popular?api_key=${apiKey}`),
-      fetch(`${TMDB_API_BASE}/tv/top_rated?api_key=${apiKey}`),
-      fetch(`${TMDB_API_BASE}/movie/upcoming?api_key=${apiKey}&region=${encodeURIComponent(region)}`),
+      fetchWithTimeout(`${TMDB_API_BASE}/trending/all/day?api_key=${apiKey}`),
+      fetchWithTimeout(`${TMDB_API_BASE}/movie/popular?api_key=${apiKey}`),
+      fetchWithTimeout(`${TMDB_API_BASE}/tv/top_rated?api_key=${apiKey}`),
+      fetchWithTimeout(`${TMDB_API_BASE}/movie/upcoming?api_key=${apiKey}&region=${encodeURIComponent(region)}`),
       anilistService.getTrending(1, 15).catch(() => []),
     ]);
 
+    const safeJson = async (res: Response | null) => {
+      if (!res || !res.ok) return { results: [] };
+      try {
+        return await res.json();
+      } catch {
+        return { results: [] };
+      }
+    };
+
     // Parse responses concurrently
     const [trendingJson, popularJson, topRatedJson, upcomingJson] = await Promise.all([
-      trendingRes.ok ? trendingRes.json() : Promise.resolve({ results: [] }),
-      popularRes.ok ? popularRes.json() : Promise.resolve({ results: [] }),
-      topRatedRes.ok ? topRatedRes.json() : Promise.resolve({ results: [] }),
-      upcomingRes.ok ? upcomingRes.json() : Promise.resolve({ results: [] }),
+      safeJson(trendingRes),
+      safeJson(popularRes),
+      safeJson(topRatedRes),
+      safeJson(upcomingRes),
     ]);
 
     // Format items with w342 poster optimization

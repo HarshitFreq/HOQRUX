@@ -4,7 +4,7 @@ import { INITIAL_MEDIA_ITEMS } from './mockData';
 import { storageService } from './storage';
 import { API_CONFIG } from './api/config';
 
-const TMDB_IMAGE_BASE = API_CONFIG.TMDB.IMAGE_BASE_URL;
+const TMDB_IMAGE_BASE = `${API_CONFIG.TMDB.IMAGE_BASE_URL}/`;
 const TMDB_API_BASE = API_CONFIG.TMDB.BASE_URL;
 const DEFAULT_TMDB_KEY = API_CONFIG.TMDB.API_KEY;
 

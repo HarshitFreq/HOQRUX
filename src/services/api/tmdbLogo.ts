@@ -321,6 +321,32 @@ export function clearLogoCache(): void {
 // ID Normalization & Resolution
 // ============================================================================
 
+async function fetchLogoWithTimeout(url: string, externalSignal?: AbortSignal, timeoutMs = 5000): Promise<Response | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const onAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      clearTimeout(timer);
+      return null;
+    }
+    externalSignal.addEventListener('abort', onAbort);
+  }
+
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return res;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onAbort);
+    }
+  }
+}
+
 /**
  * Resolves any ID (prefixed string, slug, or title) into a verified numeric TMDb ID.
  */
@@ -383,8 +409,8 @@ export async function resolveNumericTmdbId(
   if (queryTitle && queryTitle.length > 1) {
     try {
       const searchUrl = `${TMDB_API_BASE}/search/${normType}?api_key=${apiKey}&query=${encodeURIComponent(queryTitle)}&page=1`;
-      const res = await fetch(searchUrl, { signal });
-      if (res.ok) {
+      const res = await fetchLogoWithTimeout(searchUrl, signal);
+      if (res && res.ok) {
         const data = await res.json();
         if (data.results && data.results.length > 0 && data.results[0].id) {
           return data.results[0].id;
@@ -481,12 +507,12 @@ export function extractBestLogo(
 
   const filePath = best.file_path.startsWith('/') ? best.file_path : `/${best.file_path}`;
   if (preferPng) {
-    return `${TMDB_IMAGE_BASE}/w500${filePath.replace(/\.svg$/i, '.png')}`;
+    return `${TMDB_IMAGE_BASE}/w500${filePath.replace(/\.svg$/i, '.png')}`.replace(/([^:])\/+/g, '$1/');
   }
   if (best.file_path.toLowerCase().endsWith('.svg')) {
-    return `${TMDB_IMAGE_BASE}/original${filePath}`;
+    return `${TMDB_IMAGE_BASE}/original${filePath}`.replace(/([^:])\/+/g, '$1/');
   }
-  return `${TMDB_IMAGE_BASE}/w500${filePath}`;
+  return `${TMDB_IMAGE_BASE}/w500${filePath}`.replace(/([^:])\/+/g, '$1/');
 }
 
 /**
@@ -686,8 +712,8 @@ export async function fetchTitleLogo(
     let titleVerified = false;
     try {
       const url = `${TMDB_API_BASE}/${currentMediaType}/${numericId}?api_key=${apiKey}&append_to_response=images`;
-      const res = await fetch(url, { signal: options.signal });
-      if (res.ok) {
+      const res = await fetchLogoWithTimeout(url, options.signal);
+      if (res && res.ok) {
         const data: TmdbDetailWithImages = await res.json();
         const matches = !options.title || isTitleMatch(options.title, data.title || data.name, data.original_title || data.original_name);
         if (matches) {
@@ -706,8 +732,8 @@ export async function fetchTitleLogo(
       const altMediaType: 'movie' | 'tv' = currentMediaType === 'movie' ? 'tv' : 'movie';
       try {
         const altUrl = `${TMDB_API_BASE}/${altMediaType}/${numericId}?api_key=${apiKey}&append_to_response=images`;
-        const altRes = await fetch(altUrl, { signal: options.signal });
-        if (altRes.ok) {
+        const altRes = await fetchLogoWithTimeout(altUrl, options.signal);
+        if (altRes && altRes.ok) {
           const altData = await altRes.json();
           const altMatches = !options.title || isTitleMatch(options.title, altData.title || altData.name, altData.original_title || altData.original_name);
           if (altMatches) {
@@ -726,8 +752,8 @@ export async function fetchTitleLogo(
     if (!titleVerified && options.title && options.title.trim().length > 1) {
       try {
         const searchUrl = `${TMDB_API_BASE}/search/multi?api_key=${apiKey}&query=${encodeURIComponent(options.title)}&page=1`;
-        const sRes = await fetch(searchUrl, { signal: options.signal });
-        if (sRes.ok) {
+        const sRes = await fetchLogoWithTimeout(searchUrl, options.signal);
+        if (sRes && sRes.ok) {
           const sData = await sRes.json();
           const candidate = (sData.results || []).find((r: any) =>
             (r.media_type === 'movie' || r.media_type === 'tv') &&
@@ -738,8 +764,8 @@ export async function fetchTitleLogo(
             currentMediaType = candType;
             numericId = candidate.id;
             const candUrl = `${TMDB_API_BASE}/${candType}/${candidate.id}?api_key=${apiKey}&append_to_response=images`;
-            const candRes = await fetch(candUrl, { signal: options.signal });
-            if (candRes.ok) {
+            const candRes = await fetchLogoWithTimeout(candUrl, options.signal);
+            if (candRes && candRes.ok) {
               const candData = await candRes.json();
               logos = candData.images?.logos || [];
               effectiveOriginalLang = (candData.original_language || originalLanguage)?.toLowerCase();
@@ -756,8 +782,8 @@ export async function fetchTitleLogo(
     if ((!logos || logos.length === 0) && numericId) {
       try {
         const imagesUrl = `${TMDB_API_BASE}/${currentMediaType}/${numericId}/images?api_key=${apiKey}`;
-        const imgRes = await fetch(imagesUrl, { signal: options.signal });
-        if (imgRes.ok) {
+        const imgRes = await fetchLogoWithTimeout(imagesUrl, options.signal);
+        if (imgRes && imgRes.ok) {
           const imgData = await imgRes.json();
           logos = imgData.logos || [];
         }
@@ -771,11 +797,11 @@ export async function fetchTitleLogo(
     if (bestItem) {
       const filePath = bestItem.file_path.startsWith('/') ? bestItem.file_path : `/${bestItem.file_path}`;
       if (preferPng) {
-        resolvedUrl = `${TMDB_IMAGE_BASE}/w500${filePath.replace(/\.svg$/i, '.png')}`;
+        resolvedUrl = `${TMDB_IMAGE_BASE}/w500${filePath.replace(/\.svg$/i, '.png')}`.replace(/([^:])\/+/g, '$1/');
       } else if (bestItem.file_path.toLowerCase().endsWith('.svg')) {
-        resolvedUrl = `${TMDB_IMAGE_BASE}/original${filePath}`;
+        resolvedUrl = `${TMDB_IMAGE_BASE}/original${filePath}`.replace(/([^:])\/+/g, '$1/');
       } else {
-        resolvedUrl = `${TMDB_IMAGE_BASE}/w500${filePath}`;
+        resolvedUrl = `${TMDB_IMAGE_BASE}/w500${filePath}`.replace(/([^:])\/+/g, '$1/');
       }
       if (bestItem.aspect_ratio > 0) {
         setCachedLogoAspectRatio(currentMediaType, id, bestItem.aspect_ratio);
