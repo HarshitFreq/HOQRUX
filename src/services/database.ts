@@ -32,6 +32,9 @@ const LEGACY_KEYS = {
   MEDIA_CACHE: '@hoqrux_media_cache_v1',
 };
 
+// Tracks whether the remote Supabase schema has been updated to accept TEXT user IDs
+let isCloudSchemaCompatible: boolean | null = null;
+
 function getUserKey(userId: string, type: 'tracking' | 'watchlists' | 'history' | 'cache'): string {
   const safeId = (userId || 'guest').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
   return `@hoqrux_u_${safeId}_${type}_v2`;
@@ -48,6 +51,32 @@ function formatDbError(err: any): string {
     return 'Cloud database requires TEXT user IDs. Please run the updated SQL script in your Supabase SQL Editor.';
   }
   return msg;
+}
+
+/**
+ * Strips heavy nested fields (cast, seasons, episodes, similar) before persisting to local storage.
+ * Keeps records under ~350 bytes rather than 50KB+, preventing SQLite storage exhaustion.
+ */
+export function toLightweightMediaItem(item: MediaItem): MediaItem {
+  if (!item) return item;
+  return {
+    id: item.id,
+    tmdbId: item.tmdbId,
+    imdbId: item.imdbId,
+    title: item.title,
+    originalTitle: item.originalTitle,
+    type: item.type,
+    posterPath: item.posterPath,
+    backdropPath: item.backdropPath,
+    overview: item.overview ? item.overview.slice(0, 200) : '',
+    releaseYear: item.releaseYear,
+    tmdbRating: item.tmdbRating,
+    imdbRating: item.imdbRating,
+    genres: Array.isArray(item.genres) ? item.genres.slice(0, 4) : [],
+    runtime: item.runtime,
+    totalEpisodes: item.totalEpisodes,
+    sourceProvider: item.sourceProvider,
+  };
 }
 
 export const databaseService = {
@@ -204,9 +233,20 @@ export const databaseService = {
   async saveUserTracking(userId: string, tracking: Record<string, UserTitleTracking>): Promise<void> {
     try {
       const key = getUserKey(userId, 'tracking');
-      await AsyncStorage.setItem(key, JSON.stringify(tracking));
+      const sanitized: Record<string, UserTitleTracking> = {};
+      for (const [tId, record] of Object.entries(tracking)) {
+        if (record.cachedMediaItem) {
+          sanitized[tId] = {
+            ...record,
+            cachedMediaItem: toLightweightMediaItem(record.cachedMediaItem),
+          };
+        } else {
+          sanitized[tId] = record;
+        }
+      }
+      await AsyncStorage.setItem(key, JSON.stringify(sanitized));
     } catch (e) {
-      console.error('Failed to save user tracking:', e);
+      console.warn('[database] Failed to save user tracking to local storage:', e);
     }
   },
 
@@ -310,9 +350,40 @@ export const databaseService = {
   async saveUserMediaCache(userId: string, cache: Record<string, MediaItem>): Promise<void> {
     try {
       const key = getUserKey(userId, 'cache');
-      await AsyncStorage.setItem(key, JSON.stringify(cache));
+      const entries = Object.entries(cache);
+      // Retain at most 60 recent entries and keep each lightweight
+      const trimmed = entries.slice(-60);
+      const sanitized: Record<string, MediaItem> = {};
+      for (const [k, it] of trimmed) {
+        sanitized[k] = toLightweightMediaItem(it);
+      }
+      try {
+        await AsyncStorage.setItem(key, JSON.stringify(sanitized));
+      } catch {
+        // If storage is constrained, prune aggressively to 20 entries
+        const emergencyPruned: Record<string, MediaItem> = {};
+        for (const [k, it] of entries.slice(-20)) {
+          emergencyPruned[k] = toLightweightMediaItem(it);
+        }
+        await AsyncStorage.setItem(key, JSON.stringify(emergencyPruned));
+      }
     } catch (e) {
-      console.error('Failed to save user media cache:', e);
+      console.warn('[database] Gracefully skipped media cache write due to local storage limits:', e);
+    }
+  },
+
+  async purgeBloatedCaches(userId?: string): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(LEGACY_KEYS.MEDIA_CACHE);
+      if (userId) {
+        const key = getUserKey(userId, 'cache');
+        const data = await AsyncStorage.getItem(key);
+        if (data && data.length > 250000) { // >250KB
+          await AsyncStorage.removeItem(key);
+        }
+      }
+    } catch {
+      // Ignore
     }
   },
 
@@ -352,7 +423,7 @@ export const databaseService = {
     history?: ViewingHistoryEntry[];
   } | null> {
     const supabase = supabaseService.getClient();
-    if (!supabase || !userId || userId === 'guest') {
+    if (!supabase || !userId || userId === 'guest' || isCloudSchemaCompatible === false) {
       return null;
     }
 
@@ -372,6 +443,13 @@ export const databaseService = {
           .eq('user_id', userId)
           .order('watched_at', { ascending: false }),
       ]);
+
+      const isUuidError = (err: any) => err?.code === '22P02' || (err?.message || '').includes('uuid');
+      if (isUuidError(trackingRes.error) || isUuidError(listsRes.error) || isUuidError(historyRes.error)) {
+        isCloudSchemaCompatible = false;
+        console.warn('[Cloud Database] Supabase table schema uses UUID user_id. Please execute schema.sql in Supabase SQL editor for cloud sync.');
+        return null;
+      }
 
       if (trackingRes.error) {
         console.warn('[Cloud Database] tracking query error:', trackingRes.error);
@@ -436,7 +514,7 @@ export const databaseService = {
     track: UserTitleTracking
   ): Promise<{ success: boolean; error?: string }> {
     const supabase = supabaseService.getClient();
-    if (!supabase || !userId || userId === 'guest') {
+    if (!supabase || !userId || userId === 'guest' || isCloudSchemaCompatible === false) {
       return { success: false, error: 'Offline or guest user' };
     }
 
@@ -453,6 +531,9 @@ export const databaseService = {
       });
 
       if (error) {
+        if (error.code === '22P02' || error.message?.includes('uuid')) {
+          isCloudSchemaCompatible = false;
+        }
         console.warn(`[Cloud Database] pushTitleTracking failed for ${titleId}:`, error);
         return { success: false, error: formatDbError(error) };
       }
@@ -468,7 +549,7 @@ export const databaseService = {
    */
   async pushWatchlistToCloud(userId: string, list: Watchlist): Promise<{ success: boolean; error?: string }> {
     const supabase = supabaseService.getClient();
-    if (!supabase || !userId || userId === 'guest') {
+    if (!supabase || !userId || userId === 'guest' || isCloudSchemaCompatible === false) {
       return { success: false, error: 'Offline or guest user' };
     }
 
@@ -484,6 +565,9 @@ export const databaseService = {
       });
 
       if (error) {
+        if (error.code === '22P02' || error.message?.includes('uuid')) {
+          isCloudSchemaCompatible = false;
+        }
         console.warn(`[Cloud Database] pushWatchlist failed for ${list.id}:`, error);
         return { success: false, error: formatDbError(error) };
       }
@@ -501,7 +585,7 @@ export const databaseService = {
     entry: ViewingHistoryEntry
   ): Promise<{ success: boolean; error?: string }> {
     const supabase = supabaseService.getClient();
-    if (!supabase || !userId || userId === 'guest') {
+    if (!supabase || !userId || userId === 'guest' || isCloudSchemaCompatible === false) {
       return { success: false, error: 'Offline or guest user' };
     }
 
@@ -515,6 +599,9 @@ export const databaseService = {
       });
 
       if (error) {
+        if (error.code === '22P02' || error.message?.includes('uuid')) {
+          isCloudSchemaCompatible = false;
+        }
         console.warn(`[Cloud Database] pushHistoryEntry failed for ${entry.id}:`, error);
         return { success: false, error: formatDbError(error) };
       }
@@ -614,7 +701,7 @@ export const databaseService = {
     counts?: { tracking: number; watchlists: number; history: number };
   }> {
     const supabase = supabaseService.getClient();
-    if (!supabase || !userId || userId === 'guest') {
+    if (!supabase || !userId || userId === 'guest' || isCloudSchemaCompatible === false) {
       return { success: false, error: 'Offline or guest user' };
     }
 
@@ -674,6 +761,9 @@ export const databaseService = {
 
       const error = trackingRes.error || listsRes.error || historyRes.error || profileRes.error;
       if (error) {
+        if (error.code === '22P02' || error.message?.includes('uuid')) {
+          isCloudSchemaCompatible = false;
+        }
         console.warn('[Cloud Database] Bulk upsert error:', error);
         return { success: false, error: formatDbError(error) };
       }

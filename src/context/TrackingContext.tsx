@@ -8,7 +8,7 @@ import {
   UserStats,
 } from '../services/types';
 import { DEFAULT_SYSTEM_WATCHLISTS } from '../services/storage';
-import { databaseService } from '../services/database';
+import { databaseService, toLightweightMediaItem } from '../services/database';
 import { useAuth } from './AuthContext';
 import { INITIAL_MEDIA_ITEMS } from '../services/mockData';
 import { tmdbService } from '../services/tmdb';
@@ -170,6 +170,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     async function loadData() {
       setLoading(true);
       try {
+        await databaseService.purgeBloatedCaches(userId);
         const [savedTracking, savedLists, savedHistory, savedMediaCache] = await Promise.all([
           databaseService.getUserTracking(userId),
           databaseService.getUserWatchlists(userId),
@@ -211,7 +212,8 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       isMounted = false;
     };
-  }, [userId, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const getTrackingForTitle = useCallback((titleId: string): UserTitleTracking | undefined => {
     return tracking[titleId];
@@ -321,17 +323,21 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const cacheMediaItem = useCallback(async (item: MediaItem) => {
     if (!item?.id) return;
     const bareId = item.id.replace(/^(tv|movie|anime)-/, '');
+    const light = toLightweightMediaItem(item);
     setMediaCache((prev) => {
-      const nextCache = {
-        ...prev,
-        [item.id]: item,
-        [bareId]: item,
-        [`${item.type}-${bareId}`]: item,
-      };
+      const keys = Object.keys(prev);
+      const nextCache: Record<string, MediaItem> = {};
+      const recentKeys = keys.slice(-60);
+      for (const k of recentKeys) {
+        nextCache[k] = prev[k];
+      }
+      nextCache[item.id] = light;
+      nextCache[bareId] = light;
+      nextCache[`${item.type}-${bareId}`] = light;
       persistCache(nextCache);
       return nextCache;
     });
-    tmdbService.cacheMediaItems([item]);
+    tmdbService.cacheMediaItems([light]);
   }, [persistCache]);
 
   const refreshTracking = useCallback(async () => {
@@ -369,7 +375,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       rating: rating !== undefined ? rating : prev.rating,
       completedAt: nowIso,
       updatedAt: nowIso,
-      cachedMediaItem: mediaItem,
+      cachedMediaItem: toLightweightMediaItem(mediaItem),
     };
 
     const nextTracking = { ...tracking, [mediaItem.id]: nextRecord };
@@ -437,7 +443,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       lastWatchedEpisode: nextWatched ? episodeNumber : prev.lastWatchedEpisode,
       completedAt: isNowAllWatched ? new Date().toISOString() : prev.completedAt,
       updatedAt: new Date().toISOString(),
-      cachedMediaItem: mediaItem,
+      cachedMediaItem: toLightweightMediaItem(mediaItem),
     };
 
     const nextTracking = { ...tracking, [mediaItem.id]: nextRecord };
@@ -559,7 +565,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       lastWatchedEpisode: upToEpisodeNumber,
       completedAt: isFullyCompleted ? nowIso : prev.completedAt,
       updatedAt: nowIso,
-      cachedMediaItem: mediaItem,
+      cachedMediaItem: toLightweightMediaItem(mediaItem),
     };
 
     const nextTracking = { ...tracking, [mediaItem.id]: nextRecord };
@@ -632,7 +638,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       lastWatchedEpisode: season.episodes[season.episodes.length - 1]?.episodeNumber || 1,
       completedAt: isDone ? nowIso : prev.completedAt,
       updatedAt: nowIso,
-      cachedMediaItem: mediaItem,
+      cachedMediaItem: toLightweightMediaItem(mediaItem),
     };
 
     const nextTracking = { ...tracking, [mediaItem.id]: nextRecord };
@@ -672,7 +678,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       status,
       completedAt: status === 'completed' ? nowIso : prev.completedAt,
       updatedAt: nowIso,
-      cachedMediaItem: mediaItem,
+      cachedMediaItem: toLightweightMediaItem(mediaItem),
     };
 
     const nextTracking = { ...tracking, [mediaItem.id]: nextRecord };
@@ -876,7 +882,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           status: targetStatus,
           updatedAt: nowIso,
           completedAt: targetStatus === 'completed' ? nowIso : prev.completedAt,
-          cachedMediaItem: cachedItem,
+          cachedMediaItem: cachedItem ? toLightweightMediaItem(cachedItem) : undefined,
         },
       };
       setTracking(nextTracking);
