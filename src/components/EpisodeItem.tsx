@@ -1,7 +1,7 @@
 import React, { useState, memo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import { Episode, MediaItem } from '../services/types';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';

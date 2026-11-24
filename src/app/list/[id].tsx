@@ -12,7 +12,7 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../../utils/haptics';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { useTracking } from '../../context/TrackingContext';

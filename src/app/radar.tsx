@@ -13,7 +13,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { useTracking } from '../context/TrackingContext';

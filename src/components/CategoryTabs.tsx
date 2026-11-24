@@ -12,7 +12,7 @@ import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
@@ -82,9 +82,6 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = memo(({
                     styles.segmentText,
                     isActive ? styles.segmentTextActive : styles.segmentTextInactive,
                   ]}
-                  allowFontScaling={true}
-                  maxFontSizeMultiplier={1.2}
-                  numberOfLines={1}
                 >
                   {tab.label}
                 </Text>

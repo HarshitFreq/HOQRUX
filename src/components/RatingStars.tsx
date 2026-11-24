@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import { colors } from '../theme/colors';
 
 interface RatingStarsProps {

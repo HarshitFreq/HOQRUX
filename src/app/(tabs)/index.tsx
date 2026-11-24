@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../../utils/haptics';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { useTracking } from '../../context/TrackingContext';

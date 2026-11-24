@@ -12,7 +12,7 @@ import {
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import { router } from 'expo-router';
 
 import { MediaItem } from '../services/types';

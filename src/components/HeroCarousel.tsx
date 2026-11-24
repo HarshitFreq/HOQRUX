@@ -23,7 +23,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { MediaItem } from '../services/types';

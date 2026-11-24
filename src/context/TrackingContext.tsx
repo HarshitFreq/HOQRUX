@@ -398,7 +398,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const nextHistory = [historyEntry, ...history];
     setHistory(nextHistory);
     await persistHistory(nextHistory);
-  }, [tracking, watchlists, history, cacheMediaItem]);
+  }, [tracking, watchlists, history, cacheMediaItem, persistTracking, persistWatchlists, persistHistory]);
 
   // Toggle single episode watched
   const toggleEpisodeWatched = useCallback(async (
@@ -477,7 +477,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     setHistory(nextHistory);
     await persistHistory(nextHistory);
-  }, [cacheMediaItem, tracking, watchlists, history]);
+  }, [cacheMediaItem, tracking, watchlists, history, persistTracking, persistWatchlists, persistHistory]);
 
   // Batch mark episodes up to a specific episode in a season (with optional prior seasons)
   const markEpisodesUpTo = useCallback(async (
@@ -582,7 +582,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHistory(nextHistory);
       await persistHistory(nextHistory);
     }
-  }, [cacheMediaItem, tracking, watchlists, history]);
+  }, [cacheMediaItem, tracking, watchlists, history, persistTracking, persistWatchlists, persistHistory]);
 
   // Bulk mark entire season
   const markSeasonWatched = useCallback(async (
@@ -658,7 +658,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     setHistory(nextHistory);
     await persistHistory(nextHistory);
-  }, [cacheMediaItem, tracking, watchlists, history]);
+  }, [cacheMediaItem, tracking, watchlists, history, persistTracking, persistWatchlists, persistHistory]);
 
   // Change watch status
   const setWatchStatus = useCallback(async (mediaItem: MediaItem, status: WatchStatus) => {
@@ -704,7 +704,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHistory(nextHistory);
       await persistHistory(nextHistory);
     }
-  }, [cacheMediaItem, tracking, watchlists, history]);
+  }, [cacheMediaItem, tracking, watchlists, history, persistTracking, persistWatchlists, persistHistory]);
 
   // Set user rating
   const setRating = useCallback(async (titleId: string, rating: number) => {
@@ -725,7 +725,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const nextTracking = { ...tracking, [titleId]: nextRecord };
     setTracking(nextTracking);
     await persistTracking(nextTracking, titleId);
-  }, [tracking]);
+  }, [tracking, persistTracking]);
 
   // Set personal review / notes
   const setReview = useCallback(async (titleId: string, review: string) => {
@@ -741,7 +741,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const nextTracking = { ...tracking, [titleId]: nextRecord };
     setTracking(nextTracking);
     await persistTracking(nextTracking, titleId);
-  }, [tracking]);
+  }, [tracking, persistTracking]);
 
   // Toggle favorite
   const toggleFavorite = useCallback(async (titleId: string) => {
@@ -757,7 +757,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const nextTracking = { ...tracking, [titleId]: nextRecord };
     setTracking(nextTracking);
     await persistTracking(nextTracking, titleId);
-  }, [tracking]);
+  }, [tracking, persistTracking]);
 
   // Toggle episode reminder
   const toggleReminder = useCallback(async (titleId: string) => {
@@ -773,7 +773,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const nextTracking = { ...tracking, [titleId]: nextRecord };
     setTracking(nextTracking);
     await persistTracking(nextTracking, titleId);
-  }, [tracking]);
+  }, [tracking, persistTracking]);
 
   // Increment rewatch count
   const incrementRewatch = useCallback(async (titleId: string) => {
@@ -805,7 +805,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setHistory(nextHistory);
       await persistHistory(nextHistory);
     }
-  }, [tracking, resolveMediaItem, history]);
+  }, [tracking, resolveMediaItem, history, persistTracking, persistHistory]);
 
   // Custom Watchlist actions
   const createWatchlist = useCallback(async (name: string, description: string, accentColor = '#10B981'): Promise<Watchlist> => {
@@ -823,13 +823,13 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setWatchlists(next);
     await persistWatchlists(next);
     return newList;
-  }, [watchlists]);
+  }, [watchlists, persistWatchlists]);
 
   const deleteWatchlist = useCallback(async (listId: string) => {
     const next = watchlists.filter(l => l.id !== listId);
     setWatchlists(next);
     await persistWatchlists(next);
-  }, [watchlists]);
+  }, [watchlists, persistWatchlists]);
 
   const toggleTitleInWatchlist = useCallback(async (listId: string, titleId: string, mediaItem?: MediaItem) => {
     const list = watchlists.find(l => l.id === listId);

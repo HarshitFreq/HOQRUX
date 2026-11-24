@@ -1,5 +1,5 @@
 import { Linking } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import { MediaItem } from './types';
 
 export const trailerService = {

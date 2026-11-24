@@ -1,32 +1,10 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, Text } from 'react-native';
+import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
-
-function createTabLabel(label: string) {
-  function TabLabel({ focused }: { focused: boolean }) {
-    return (
-      <Text
-        numberOfLines={1}
-        style={{
-          fontFamily: typography.fontBold,
-          fontSize: 10,
-          color: focused ? colors.textPrimary : '#9E9EAA',
-          letterSpacing: Platform.OS === 'ios' ? 0.8 : 0,
-          includeFontPadding: false,
-          marginTop: 2,
-        }}
-      >
-        {label}
-      </Text>
-    );
-  }
-  TabLabel.displayName = `TabLabel(${label})`;
-  return TabLabel;
-}
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -43,6 +21,13 @@ export default function TabLayout() {
         tabBarShowLabel: true,
         tabBarActiveTintColor: colors.textPrimary,
         tabBarInactiveTintColor: '#9E9EAA',
+        tabBarLabelStyle: {
+          fontFamily: typography.fontBold,
+          fontSize: 10,
+          letterSpacing: Platform.OS === 'ios' ? 0.8 : 0,
+          includeFontPadding: false,
+          marginTop: 2,
+        },
         tabBarStyle: {
           backgroundColor: colors.void,
           borderTopColor: colors.border,
@@ -63,7 +48,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'NOW',
-          tabBarLabel: createTabLabel('NOW'),
+          tabBarLabel: 'NOW',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'play-sharp' : 'play-outline'}
@@ -77,7 +62,7 @@ export default function TabLayout() {
         name="search"
         options={{
           title: 'EXPLORE',
-          tabBarLabel: createTabLabel('EXPLORE'),
+          tabBarLabel: 'EXPLORE',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'search-sharp' : 'search-outline'}
@@ -91,7 +76,7 @@ export default function TabLayout() {
         name="lists"
         options={{
           title: 'LISTS',
-          tabBarLabel: createTabLabel('LISTS'),
+          tabBarLabel: 'LISTS',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'bookmark-sharp' : 'bookmark-outline'}
@@ -105,7 +90,7 @@ export default function TabLayout() {
         name="activity"
         options={{
           title: 'PROFILE',
-          tabBarLabel: createTabLabel('PROFILE'),
+          tabBarLabel: 'PROFILE',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'person-sharp' : 'person-outline'}

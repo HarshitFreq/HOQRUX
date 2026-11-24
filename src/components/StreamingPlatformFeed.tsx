@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { MediaItem } from '../services/types';

@@ -2,6 +2,16 @@ import { MediaItem, Season, Episode } from '../../types';
 
 const BASE_URL = 'https://api.tvmaze.com';
 
+async function fetchWithTimeout(url: string, timeoutMs = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface TVmazeShow {
   id: number;
   url: string;
@@ -154,7 +164,7 @@ function transformTVmazeShow(show: TVmazeShow): MediaItem {
 export const tvmazeService = {
   async search(query: string): Promise<MediaItem[]> {
     try {
-      const res = await fetch(`${BASE_URL}/search/shows?q=${encodeURIComponent(query)}`);
+      const res = await fetchWithTimeout(`${BASE_URL}/search/shows?q=${encodeURIComponent(query)}`);
       if (!res.ok) return [];
       const data: { show: TVmazeShow }[] = await res.json();
       return data.map((d) => transformTVmazeShow(d.show));
@@ -166,7 +176,7 @@ export const tvmazeService = {
   async getShowDetails(tvmazeId: number | string): Promise<MediaItem | null> {
     try {
       const rawId = String(tvmazeId).replace('tvmaze-', '');
-      const res = await fetch(`${BASE_URL}/shows/${rawId}?embed[]=episodes&embed[]=cast`);
+      const res = await fetchWithTimeout(`${BASE_URL}/shows/${rawId}?embed[]=episodes&embed[]=cast`);
       if (!res.ok) return null;
       const data: TVmazeShow = await res.json();
       return transformTVmazeShow(data);
@@ -179,12 +189,12 @@ export const tvmazeService = {
     try {
       if (isAnime) {
         // Query search to specifically find the animated series, not a live-action reboot/adaptation
-        const res = await fetch(`${BASE_URL}/search/shows?q=${encodeURIComponent(title)}`);
+        const res = await fetchWithTimeout(`${BASE_URL}/search/shows?q=${encodeURIComponent(title)}`);
         if (!res.ok) return [];
         const shows: { show: TVmazeShow }[] = await res.json();
         const animShow = shows.find((s) => s.show.type === 'Animation' || s.show.genres?.includes('Anime'));
         if (animShow) {
-          const detailRes = await fetch(`${BASE_URL}/shows/${animShow.show.id}?embed=episodes`);
+          const detailRes = await fetchWithTimeout(`${BASE_URL}/shows/${animShow.show.id}?embed=episodes`);
           if (detailRes.ok) {
             const data: TVmazeShow = await detailRes.json();
             const transformed = transformTVmazeShow(data);
@@ -194,7 +204,7 @@ export const tvmazeService = {
         return [];
       }
 
-      const res = await fetch(`${BASE_URL}/singlesearch/shows?q=${encodeURIComponent(title)}&embed=episodes`);
+      const res = await fetchWithTimeout(`${BASE_URL}/singlesearch/shows?q=${encodeURIComponent(title)}&embed=episodes`);
       if (!res.ok) return [];
       const data: TVmazeShow = await res.json();
       const transformed = transformTVmazeShow(data);
@@ -206,7 +216,7 @@ export const tvmazeService = {
 
   async getSchedule(country = 'US'): Promise<MediaItem[]> {
     try {
-      const res = await fetch(`${BASE_URL}/schedule?country=${country}`);
+      const res = await fetchWithTimeout(`${BASE_URL}/schedule?country=${country}`);
       if (!res.ok) return [];
       const episodes: { show: TVmazeShow }[] = await res.json();
       const uniqueShows = new Map<number, TVmazeShow>();

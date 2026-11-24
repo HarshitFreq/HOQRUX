@@ -324,7 +324,10 @@ export const tmdbService = {
   async getMediaDetails(id: string): Promise<MediaItem | null> {
     if (runtimeMediaCache.has(id)) {
       const cached = runtimeMediaCache.get(id)!;
-      if (cached.type !== 'tv' || (cached.seasons && cached.seasons.length > 0)) {
+      const isComplete = cached.type === 'tv'
+        ? (cached.seasons && cached.seasons.length > 0)
+        : Boolean(cached.cast && cached.cast.length > 0);
+      if (isComplete) {
         return cached;
       }
     }
@@ -459,6 +462,7 @@ export const tmdbService = {
             }
           }
 
+          runtimeMediaCache.set(id, item);
           runtimeMediaCache.set(item.id, item);
           return item;
         }

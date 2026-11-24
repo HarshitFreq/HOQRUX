@@ -3,6 +3,16 @@ import { POPULAR_ANIME_MAP } from '../mapping/fribbAnime';
 
 const BASE_URL = 'https://api.jikan.moe/v4';
 
+async function fetchWithTimeout(url: string, timeoutMs = 3500): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface JikanAnime {
   mal_id: number;
   url: string;
@@ -66,7 +76,7 @@ function transformJikan(anime: JikanAnime): MediaItem {
 export const jikanService = {
   async getMediaById(id: number | string): Promise<MediaItem | null> {
     try {
-      const res = await fetch(`${BASE_URL}/anime/${id}`);
+      const res = await fetchWithTimeout(`${BASE_URL}/anime/${id}`);
       if (!res.ok) return null;
       const data: { data?: JikanAnime } = await res.json();
       if (!data.data) return null;
@@ -78,7 +88,7 @@ export const jikanService = {
 
   async search(query: string, limit = 15): Promise<MediaItem[]> {
     try {
-      const res = await fetch(`${BASE_URL}/anime?q=${encodeURIComponent(query)}&limit=${limit}&sfw=true`);
+      const res = await fetchWithTimeout(`${BASE_URL}/anime?q=${encodeURIComponent(query)}&limit=${limit}&sfw=true`);
       if (!res.ok) return [];
       const data: { data: JikanAnime[] } = await res.json();
       return data.data.map(transformJikan);
@@ -89,7 +99,7 @@ export const jikanService = {
 
   async getTopAnime(limit = 15): Promise<MediaItem[]> {
     try {
-      const res = await fetch(`${BASE_URL}/top/anime?limit=${limit}`);
+      const res = await fetchWithTimeout(`${BASE_URL}/top/anime?limit=${limit}`);
       if (!res.ok) return [];
       const data: { data: JikanAnime[] } = await res.json();
       return data.data.map(transformJikan);

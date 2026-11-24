@@ -9,11 +9,12 @@ import {
   TextInput,
   Platform,
   useWindowDimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../../utils/haptics';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { useTracking } from '../../context/TrackingContext';
@@ -151,53 +152,59 @@ export default function ListsScreen() {
             {watchlists.filter((l) => l.isCustom).map((l) => renderListCard(l))}
           </>
         )}
+      </ScrollView>
 
-        {/* Create Modal */}
-        <Modal
-          visible={modalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setModalVisible(false)}
+      {/* Create Modal (Outside ScrollView to prevent touch responder conflicts on Android) */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>NEW WATCHLIST</Text>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>NEW WATCHLIST</Text>
 
-              <TextInput
-                style={styles.modalInput}
-                placeholder="List title (e.g. Noir, Weekend Binge)"
-                placeholderTextColor={colors.textMuted}
-                value={newListName}
-                onChangeText={setNewListName}
-              />
+            <TextInput
+              style={styles.modalInput}
+              placeholder="List title (e.g. Noir, Weekend Binge)"
+              placeholderTextColor={colors.textMuted}
+              value={newListName}
+              onChangeText={setNewListName}
+              autoFocus
+            />
 
-              <TextInput
-                style={[styles.modalInput, styles.modalDescInput]}
-                placeholder="Optional description"
-                placeholderTextColor={colors.textMuted}
-                value={newListDesc}
-                onChangeText={setNewListDesc}
-                multiline
-              />
+            <TextInput
+              style={[styles.modalInput, styles.modalDescInput]}
+              placeholder="Optional description"
+              placeholderTextColor={colors.textMuted}
+              value={newListDesc}
+              onChangeText={setNewListDesc}
+              multiline
+            />
 
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  onPress={() => setModalVisible(false)}
-                  style={styles.cancelBtn}
-                >
-                  <Text style={styles.cancelBtnText}>CANCEL</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleCreateList}
-                  style={styles.saveBtn}
-                >
-                  <Text style={styles.saveBtnText}>CREATE</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={styles.cancelBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.cancelBtnText}>CANCEL</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleCreateList}
+                style={styles.saveBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.saveBtnText}>CREATE</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
-      </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
