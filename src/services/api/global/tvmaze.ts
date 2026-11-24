@@ -65,6 +65,10 @@ interface TVmazeCast {
   person: {
     id: number;
     name: string;
+    image?: {
+      medium?: string;
+      original?: string;
+    };
   };
   character: {
     id: number;
@@ -112,9 +116,10 @@ function transformTVmazeShow(show: TVmazeShow): MediaItem {
     }));
   }
 
-  const castList = show._embedded?.cast?.slice(0, 8).map((c) => ({
-    name: c.person.name,
-    character: c.character.name,
+  const castList = show._embedded?.cast?.slice(0, 16).map((c) => ({
+    name: c.person?.name || 'Unknown',
+    character: c.character?.name || '',
+    profilePath: c.person?.image?.medium || c.person?.image?.original || undefined,
   }));
 
   return {

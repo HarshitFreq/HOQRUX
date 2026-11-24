@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MediaItem, StreamingProvider, CollectionInfo, CollectionPart } from './types';
+import { MediaItem, StreamingProvider, CollectionInfo, CollectionPart, CastMember } from './types';
 import { INITIAL_MEDIA_ITEMS } from './mockData';
 import { storageService } from './storage';
 import { API_CONFIG } from './api/config';
@@ -696,9 +696,10 @@ function formatTmdbDetails(d: any, mediaType: 'movie' | 'tv'): MediaItem {
       (c.department === 'Sound' && (c.job?.includes('Music') || c.job?.includes('Composer')))
   )?.name;
 
-  const cast = (d.credits?.cast || []).slice(0, 5).map((c: any) => ({
-    name: c.name,
-    character: c.character,
+  const cast: CastMember[] = (d.credits?.cast || []).slice(0, 16).map((c: any) => ({
+    name: c.name || 'Unknown',
+    character: c.character || '',
+    profilePath: c.profile_path ? `${TMDB_IMAGE_BASE}w185${c.profile_path}` : undefined,
   }));
 
   let trailerKey: string | undefined;

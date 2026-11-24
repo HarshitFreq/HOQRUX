@@ -595,18 +595,58 @@ export default function TitleDetailScreen() {
                 )}
               </View>
 
-              {/* Cast */}
+              {/* Cast & Characters Shelf with Portrait Photos */}
               {item.cast && item.cast.length > 0 && (
                 <View style={styles.sectionContainer}>
-                  <Text style={styles.sectionHeaderTitle}>CAST</Text>
-                  <View style={styles.castList}>
-                    {item.cast.map((c, i) => (
-                      <View key={i} style={styles.castRow}>
-                        <Text style={styles.actorName}>{c.name}</Text>
-                        <Text style={styles.characterName}>{c.character}</Text>
-                      </View>
-                    ))}
+                  <View style={styles.castHeaderRow}>
+                    <Text style={styles.sectionHeaderTitle}>CAST & CHARACTERS</Text>
+                    <Text style={styles.castCountBadge}>{item.cast.length} ACTORS</Text>
                   </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.castScrollContainer}
+                    decelerationRate="fast"
+                  >
+                    {item.cast.map((c, i) => {
+                      const initials = (c.name || '?')
+                        .split(' ')
+                        .filter(Boolean)
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase();
+
+                      return (
+                        <View key={`${c.name}-${i}`} style={styles.castCard}>
+                          <View style={styles.castPhotoWrapper}>
+                            {c.profilePath ? (
+                              <Image
+                                source={{ uri: c.profilePath }}
+                                style={styles.castPhoto}
+                                contentFit="cover"
+                                transition={150}
+                                cachePolicy="memory-disk"
+                              />
+                            ) : (
+                              <View style={styles.castPhotoFallback}>
+                                <Ionicons name="person" size={24} color={colors.textMuted} />
+                                <Text style={styles.castInitials}>{initials}</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.actorName} numberOfLines={2}>
+                            {c.name}
+                          </Text>
+                          {c.character ? (
+                            <Text style={styles.characterName} numberOfLines={1}>
+                              {c.character}
+                            </Text>
+                          ) : null}
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -1751,29 +1791,64 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontStyle: 'italic',
   },
-  castList: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 10,
-    gap: 8,
-  },
-  castRow: {
+  castHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 2,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.03)',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  castCountBadge: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    color: colors.textMuted,
+    letterSpacing: 1,
+  },
+  castScrollContainer: {
+    flexDirection: 'row',
+    paddingRight: 16,
+    gap: 10,
+  },
+  castCard: {
+    width: 82,
+  },
+  castPhotoWrapper: {
+    width: 82,
+    height: 110,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceHighlight,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  castPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  castPhotoFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceElevated,
+  },
+  castInitials: {
+    fontFamily: typography.fontBold,
+    fontSize: 10,
+    color: colors.textMuted,
+    marginTop: 4,
   },
   actorName: {
     fontFamily: typography.fontBold,
     color: colors.textPrimary,
-    fontSize: 10,
+    fontSize: 10.5,
+    lineHeight: 13,
   },
   characterName: {
     fontFamily: typography.fontMedium,
     color: colors.textMuted,
-    fontSize: 10,
+    fontSize: 9.5,
+    lineHeight: 12,
+    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,

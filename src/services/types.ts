@@ -76,6 +76,12 @@ export interface Season {
   episodes: Episode[];
 }
 
+export interface CastMember {
+  name: string;
+  character: string;
+  profilePath?: string;
+}
+
 export interface MediaItem {
   id: string;
   tmdbId?: number;
@@ -100,10 +106,7 @@ export interface MediaItem {
   network?: string;
   studios?: string[];
   directors?: string[];
-  cast?: {
-    name: string;
-    character: string;
-  }[];
+  cast?: CastMember[];
   providers?: StreamingProvider[];
   seasons?: Season[];
   totalEpisodes?: number;
