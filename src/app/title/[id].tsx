@@ -1140,7 +1140,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 12px)' as any) : 8,
   },
   navIconButton: {
     width: 38,

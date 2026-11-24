@@ -232,6 +232,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 14,
+    paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 14px)' as any) : 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     marginBottom: 14,

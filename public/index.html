@@ -3,20 +3,25 @@
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no, viewport-fit=cover"
+    />
     <title>Hoqrux</title>
 
     <!-- PWA & Color Metadata -->
     <meta name="theme-color" content="#050507" />
     <meta name="description" content="Personal Media Radar, Film Tracker & Broadcast Airing Calendar" />
 
-    <!-- Apple Web App & Home Screen Integration -->
+    <!-- Apple Web App & Standalone iOS Integration -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Hoqrux" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="/icon.png" />
 
-    <!-- Manifest -->
+    <!-- Web App Manifest -->
     <link rel="manifest" href="/manifest.json" />
 
     <!-- Open Graph Sharing Embeds -->
@@ -25,8 +30,8 @@
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/icon.png" />
 
-    <!-- React Native Web Recommended Reset & Desktop Frame -->
-    <style id="expo-reset">
+    <!-- Precision Swiss Brutalist PWA Reset & Dynamic Viewport Frame -->
+    <style id="hoqrux-pwa-reset">
       :root {
         --sat: env(safe-area-inset-top, 0px);
         --sar: env(safe-area-inset-right, 0px);
@@ -34,33 +39,53 @@
         --sal: env(safe-area-inset-left, 0px);
       }
 
-      * {
+      *,
+      *::before,
+      *::after {
         box-sizing: border-box;
         -webkit-tap-highlight-color: transparent;
       }
 
-      html,
-      body {
+      /* Lock HTML and BODY to exact dynamic viewport */
+      html {
+        width: 100%;
         height: 100%;
         margin: 0;
         padding: 0;
         background-color: #050507;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+
+      body {
+        width: 100%;
+        height: 100%;
+        height: -webkit-fill-available;
+        height: 100dvh;
+        margin: 0;
+        padding: 0;
+        background-color: #050507;
+        overflow: hidden;
+        overscroll-behavior: none;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         -webkit-touch-callout: none;
       }
 
-      body {
-        overflow: hidden;
-        overscroll-behavior: none;
-      }
-
+      /* Fixed app viewport frame pins #root exactly to the visible screen above Safari toolbar */
       #root {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        height: -webkit-fill-available;
+        height: 100dvh;
         display: flex;
         flex-direction: column;
-        height: 100%;
-        width: 100%;
-        flex: 1;
+        overflow: hidden;
         background-color: #050507;
       }
 
@@ -68,8 +93,9 @@
         display: flex;
         flex-direction: column;
         flex: 1;
-        height: 100%;
         width: 100%;
+        height: 100%;
+        overflow: hidden;
       }
 
       /* Swiss Brutalist Desktop Centering Frame for Mouse / Laptop screens */

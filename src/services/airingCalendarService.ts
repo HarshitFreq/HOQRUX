@@ -159,7 +159,7 @@ class AiringCalendarService {
 
     // Step A: Fetch details for user's tracked TV shows
     const trackedTvIds = trackedShowIds.filter((id) => id.startsWith('tv-') || !id.startsWith('movie-'));
-    const trackedDetailsPromises = trackedTvIds.slice(0, 15).map(async (showId) => {
+    const trackedDetailsPromises = trackedTvIds.slice(0, 6).map(async (showId) => {
       try {
         const details = await tmdbService.getMediaDetails(showId);
         if (details && details.type !== 'movie' && details.nextEpisodeToAir) {
@@ -195,8 +195,8 @@ class AiringCalendarService {
     const onTheAirPromise = (async () => {
       try {
         const onAirShows = await tmdbService.getOnTheAirShows(1);
-        // Take top 12 popular shows
-        const topShows = onAirShows.slice(0, 12);
+        // Take top 6 popular shows to optimize connection pool on web & mobile
+        const topShows = onAirShows.slice(0, 6);
         await Promise.all(
           topShows.map(async (show) => {
             try {
