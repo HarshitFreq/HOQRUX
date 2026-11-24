@@ -277,8 +277,7 @@ export const NativeTitleLogo: React.FC<NativeTitleLogoProps> = ({
             }
             triggerEntrance();
           }}
-          onError={(e) => {
-            console.log('[NativeTitleLogo Image onError]:', e.nativeEvent?.error, activeUrl);
+          onError={() => {
             setImageLoadFailed(true);
           }}
         />

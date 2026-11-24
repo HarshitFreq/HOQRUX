@@ -17,7 +17,6 @@ import { feedback } from '../../utils/feedback';
 import {
   isNotificationsEnabled,
   setNotificationsEnabled,
-  testReleaseAlertAsync,
 } from '../../services/notificationService';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
@@ -45,7 +44,6 @@ export default function ActivityScreen() {
   const [activeSegment, setActiveSegment] = useState<'history' | 'stats' | 'settings'>('history');
   const [notificationsActive, setNotificationsActive] = useState(true);
   const [hapticsActive, setHapticsActive] = useState(feedback.isHapticsEnabled());
-  const [testAlertSent, setTestAlertSent] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -67,18 +65,6 @@ export default function ActivityScreen() {
     setHapticsActive(next);
     await feedback.setHapticsEnabled(next);
     feedback.toggle();
-  };
-
-  const handleTestPing = async () => {
-    feedback.tap();
-    const ok = await testReleaseAlertAsync();
-    if (ok) {
-      setTestAlertSent(true);
-      feedback.success();
-      setTimeout(() => setTestAlertSent(false), 3000);
-    } else {
-      Alert.alert('NOTIFICATIONS MUTED', 'Please grant notification permissions in system settings.');
-    }
   };
 
   const handleSignOut = () => {
@@ -729,6 +715,7 @@ export default function ActivityScreen() {
               </View>
 
               <View style={styles.settingActionRow}>
+                <Text style={styles.settingStatusLabel}>NOTIFICATIONS</Text>
                 <TouchableOpacity
                   style={[styles.toggleBtn, notificationsActive && styles.toggleBtnActive]}
                   onPress={handleToggleNotifications}
@@ -737,17 +724,6 @@ export default function ActivityScreen() {
                   <View style={[styles.toggleDot, notificationsActive && styles.toggleDotActive]} />
                   <Text style={[styles.toggleText, notificationsActive && styles.toggleTextActive]}>
                     {notificationsActive ? 'ENABLED' : 'MUTED'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.testPingBtn}
-                  onPress={handleTestPing}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="send" size={11} color={colors.textPrimary} style={{ marginRight: 4 }} />
-                  <Text style={styles.testPingBtnText}>
-                    {testAlertSent ? 'PING SENT' : 'TEST PING (2S)'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -768,6 +744,7 @@ export default function ActivityScreen() {
               </View>
 
               <View style={styles.settingActionRow}>
+                <Text style={styles.settingStatusLabel}>HAPTIC ENGINE</Text>
                 <TouchableOpacity
                   style={[styles.toggleBtn, hapticsActive && styles.toggleBtnActive]}
                   onPress={handleToggleHaptics}
@@ -777,17 +754,6 @@ export default function ActivityScreen() {
                   <Text style={[styles.toggleText, hapticsActive && styles.toggleTextActive]}>
                     {hapticsActive ? 'ACTIVE' : 'OFF'}
                   </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.testPingBtn}
-                  onPress={() => {
-                    feedback.tap();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="finger-print" size={12} color={colors.textPrimary} style={{ marginRight: 4 }} />
-                  <Text style={styles.testPingBtnText}>TEST PULSE</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -808,7 +774,7 @@ export default function ActivityScreen() {
 
               <View style={[styles.settingActionRow, { gap: 8 }]}>
                 <TouchableOpacity
-                  style={[styles.testPingBtn, { flex: 1 }]}
+                  style={[styles.settingsActionBtn, { flex: 1 }]}
                   onPress={() => {
                     feedback.tap();
                     setIsLegalModalOpen(true);
@@ -816,16 +782,16 @@ export default function ActivityScreen() {
                   activeOpacity={0.7}
                 >
                   <Ionicons name="document-text-outline" size={12} color={colors.textPrimary} style={{ marginRight: 4 }} />
-                  <Text style={styles.testPingBtnText}>LEGAL & POLICIES</Text>
+                  <Text style={styles.settingsActionBtnText}>LEGAL & POLICIES</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.testPingBtn, { flex: 1, borderColor: colors.borderLight }]}
+                  style={[styles.settingsActionBtn, { flex: 1, borderColor: colors.borderLight }]}
                   onPress={handleClearHistory}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="trash-outline" size={12} color={colors.accent} style={{ marginRight: 4 }} />
-                  <Text style={[styles.testPingBtnText, { color: colors.accent }]}>DATA CLEAR</Text>
+                  <Text style={[styles.settingsActionBtnText, { color: colors.accent }]}>DATA CLEAR</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1504,10 +1470,17 @@ const styles = StyleSheet.create({
   toggleTextActive: {
     color: colors.accent,
   },
-  testPingBtn: {
+  settingStatusLabel: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    color: colors.textMuted,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0.5,
+    includeFontPadding: false,
+  },
+  settingsActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
+    paddingVertical: 6,
     paddingHorizontal: 10,
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
@@ -1515,7 +1488,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     justifyContent: 'center',
   },
-  testPingBtnText: {
+  settingsActionBtnText: {
     fontFamily: typography.fontBold,
     fontSize: 9,
     color: colors.textPrimary,

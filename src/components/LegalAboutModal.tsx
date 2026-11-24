@@ -76,13 +76,13 @@ export const LegalAboutModal: React.FC<LegalAboutModalProps> = ({
                 <Text style={styles.metaValue}>1.0.0 (RELEASE)</Text>
               </View>
               <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>CLIENT</Text>
-                <Text style={styles.metaValue}>EXPO 58 // REACT 19</Text>
+                <Text style={styles.metaLabel}>ENGINE</Text>
+                <Text style={styles.metaValue}>HOQRUX CORE // 1.0</Text>
               </View>
               <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>DATABASE</Text>
+                <Text style={styles.metaLabel}>PERSISTENCE</Text>
                 <Text style={styles.metaValue}>
-                  {isAuthenticated ? 'SUPABASE CLOUD + LOCAL' : 'OFFLINE LOCAL-FIRST'}
+                  {isAuthenticated ? 'CLOUD SYNC // SECURE CACHE' : 'LOCAL-FIRST ENCRYPTION'}
                 </Text>
               </View>
             </View>

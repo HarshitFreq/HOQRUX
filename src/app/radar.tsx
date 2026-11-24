@@ -27,7 +27,6 @@ import {
   scheduleReleaseAlert,
   cancelReleaseAlert,
   getScheduledAlerts,
-  testReleaseAlertAsync,
 } from '../services/notificationService';
 
 type RadarSegment = 'my' | 'week' | 'today' | 'upcoming';
@@ -109,21 +108,6 @@ export default function ReleaseRadarScreen() {
     loadRadar(true);
     loadAlerts();
   }, [loadRadar, loadAlerts]);
-
-  const handleTestPing = useCallback(async () => {
-    feedback.tap();
-    const ok = await testReleaseAlertAsync();
-    if (ok) {
-      feedback.success();
-      setStatusBanner('TEST PING SCHEDULED // DELIVERY IN 2S');
-      setTimeout(() => setStatusBanner(null), 4000);
-    } else {
-      Alert.alert(
-        'NOTIFICATIONS MUTED',
-        'Enable notification permissions in your system settings to receive Release Radar alerts.'
-      );
-    }
-  }, []);
 
   const handleToggleAlert = useCallback(
     async (episode: AiringEpisode) => {
@@ -224,20 +208,9 @@ export default function ReleaseRadarScreen() {
           <Text style={styles.backBtnText}>BACK</Text>
         </TouchableOpacity>
 
-        <View style={styles.headerRightRow}>
-          <TouchableOpacity
-            style={styles.testAlertBtn}
-            onPress={handleTestPing}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="notifications-outline" size={13} color={colors.accent} style={{ marginRight: 4 }} />
-            <Text style={styles.testAlertBtnText}>TEST PING</Text>
-          </TouchableOpacity>
-
-          <View style={styles.liveIndicator}>
-            <View style={styles.livePulseDot} />
-            <Text style={styles.liveIndicatorText}>LIVE</Text>
-          </View>
+        <View style={styles.liveIndicator}>
+          <View style={styles.livePulseDot} />
+          <Text style={styles.liveIndicatorText}>BROADCAST RADAR</Text>
         </View>
       </View>
 
@@ -794,28 +767,6 @@ const styles = StyleSheet.create({
   },
   trackBtnTextActive: {
     color: colors.accent,
-  },
-  headerRightRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  testAlertBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(229, 9, 20, 0.4)',
-    borderRadius: 2,
-  },
-  testAlertBtnText: {
-    fontFamily: typography.fontBold,
-    fontSize: 8.5,
-    color: colors.accent,
-    letterSpacing: 0.8,
-    includeFontPadding: false,
   },
   statusBannerRow: {
     flexDirection: 'row',

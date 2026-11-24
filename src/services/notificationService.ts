@@ -198,32 +198,3 @@ export async function cancelReleaseAlert(itemId: string | number): Promise<boole
   }
 }
 
-/** Test notification triggered in 2 seconds */
-export async function testReleaseAlertAsync(): Promise<boolean> {
-  if (Platform.OS === 'web') return false;
-
-  try {
-    await initNotifications();
-    const hasPermission = await requestNotificationPermission();
-    if (!hasPermission) return false;
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'HOQRUX // RADAR PING',
-        body: 'Release Radar notification engine online & active.',
-        data: { url: '/radar' },
-        priority: AndroidNotificationPriority.HIGH,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 2,
-        channelId: CHANNEL_ID,
-      },
-    });
-
-    return true;
-  } catch (error) {
-    console.warn('[NotificationService] Test alert failed:', error);
-    return false;
-  }
-}
