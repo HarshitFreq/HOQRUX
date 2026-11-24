@@ -27,6 +27,9 @@ import {
   scheduleReleaseAlert,
   cancelReleaseAlert,
   getScheduledAlerts,
+  isAutoSyncQueueEnabled,
+  setAutoSyncQueueEnabled,
+  syncQueueRadarAlerts,
 } from '../services/notificationService';
 
 type RadarSegment = 'my' | 'week' | 'today' | 'upcoming';
@@ -39,6 +42,7 @@ export default function ReleaseRadarScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
 
   // Load scheduled notification alerts
   const loadAlerts = useCallback(async () => {
@@ -52,11 +56,20 @@ export default function ReleaseRadarScreen() {
 
   useEffect(() => {
     let isMounted = true;
-    getScheduledAlerts().then((alerts) => {
-      if (isMounted) {
-        setScheduledAlertIds(new Set(Object.keys(alerts)));
-      }
-    }).catch(() => {});
+    getScheduledAlerts()
+      .then((alerts) => {
+        if (isMounted) {
+          setScheduledAlertIds(new Set(Object.keys(alerts)));
+        }
+      })
+      .catch(() => {});
+    isAutoSyncQueueEnabled()
+      .then((enabled) => {
+        if (isMounted) {
+          setAutoSyncEnabled(enabled);
+        }
+      })
+      .catch(() => {});
     return () => {
       isMounted = false;
     };
@@ -69,12 +82,29 @@ export default function ReleaseRadarScreen() {
     );
   }, [tracking]);
 
+  const runAutoSyncIfEnabled = useCallback(
+    async (data: ReleaseRadarData | null) => {
+      if (!data || !data.myRadar || data.myRadar.length === 0) return;
+      const enabled = await isAutoSyncQueueEnabled();
+      if (!enabled) return;
+
+      const res = await syncQueueRadarAlerts(data.myRadar);
+      if (res.newlyScheduled > 0) {
+        await loadAlerts();
+        setStatusBanner(`RADAR AUTO-SYNCED // ${res.newlyScheduled} NEW ALERTS ARMED`);
+        setTimeout(() => setStatusBanner(null), 3500);
+      }
+    },
+    [loadAlerts]
+  );
+
   const loadRadar = useCallback(
     async (forceRefresh = false) => {
       try {
         if (forceRefresh) setIsRefreshing(true);
         const data = await airingCalendarService.getReleaseRadar(trackedShowIds, forceRefresh);
         setRadarData(data);
+        runAutoSyncIfEnabled(data);
       } catch (e) {
         console.warn('Failed to load radar data:', e);
       } finally {
@@ -82,7 +112,7 @@ export default function ReleaseRadarScreen() {
         setIsRefreshing(false);
       }
     },
-    [trackedShowIds]
+    [trackedShowIds, runAutoSyncIfEnabled]
   );
 
   useEffect(() => {
@@ -93,6 +123,7 @@ export default function ReleaseRadarScreen() {
         if (isMounted) {
           setRadarData(data);
           setIsLoading(false);
+          runAutoSyncIfEnabled(data);
         }
       })
       .catch(() => {
@@ -101,7 +132,32 @@ export default function ReleaseRadarScreen() {
     return () => {
       isMounted = false;
     };
-  }, [trackedShowIds]);
+  }, [trackedShowIds, runAutoSyncIfEnabled]);
+
+  const handleToggleAutoSync = useCallback(async () => {
+    feedback.toggle();
+    const next = !autoSyncEnabled;
+    setAutoSyncEnabled(next);
+    await setAutoSyncQueueEnabled(next);
+
+    if (next) {
+      if (radarData?.myRadar?.length) {
+        const res = await syncQueueRadarAlerts(radarData.myRadar);
+        await loadAlerts();
+        setStatusBanner(
+          res.newlyScheduled > 0
+            ? `QUEUE RADAR ARMED // ${res.newlyScheduled} NEW BROADCASTS ARMED`
+            : `QUEUE RADAR ARMED // ${res.totalActive} ACTIVE ALERTS`
+        );
+      } else {
+        setStatusBanner('QUEUE RADAR AUTO-SYNC ARMED');
+      }
+      setTimeout(() => setStatusBanner(null), 3500);
+    } else {
+      setStatusBanner('QUEUE RADAR AUTO-SYNC MUTED');
+      setTimeout(() => setStatusBanner(null), 3000);
+    }
+  }, [autoSyncEnabled, radarData, loadAlerts]);
 
   const handleRefresh = useCallback(() => {
     feedback.tap();
@@ -208,9 +264,22 @@ export default function ReleaseRadarScreen() {
           <Text style={styles.backBtnText}>BACK</Text>
         </TouchableOpacity>
 
-        <View style={styles.liveIndicator}>
-          <View style={styles.livePulseDot} />
-          <Text style={styles.liveIndicatorText}>BROADCAST RADAR</Text>
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity
+            style={[styles.autoSyncBtn, autoSyncEnabled && styles.autoSyncBtnActive]}
+            onPress={handleToggleAutoSync}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.autoSyncDot, autoSyncEnabled && styles.autoSyncDotActive]} />
+            <Text style={[styles.autoSyncBtnText, autoSyncEnabled && styles.autoSyncBtnTextActive]}>
+              AUTO-SYNC
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.liveIndicator}>
+            <View style={styles.livePulseDot} />
+            <Text style={styles.liveIndicatorText}>LIVE</Text>
+          </View>
         </View>
       </View>
 
@@ -495,6 +564,45 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     letterSpacing: Platform.OS === 'ios' ? 1 : 0,
     includeFontPadding: false,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  autoSyncBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 2,
+    gap: 5,
+  },
+  autoSyncBtnActive: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+  },
+  autoSyncDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.textMuted,
+  },
+  autoSyncDotActive: {
+    backgroundColor: colors.accent,
+  },
+  autoSyncBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    includeFontPadding: false,
+  },
+  autoSyncBtnTextActive: {
+    color: colors.accent,
   },
   liveIndicator: {
     flexDirection: 'row',

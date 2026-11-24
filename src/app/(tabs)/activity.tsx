@@ -17,7 +17,11 @@ import { feedback } from '../../utils/feedback';
 import {
   isNotificationsEnabled,
   setNotificationsEnabled,
+  isAutoSyncQueueEnabled,
+  setAutoSyncQueueEnabled,
+  syncQueueRadarAlerts,
 } from '../../services/notificationService';
+import { airingCalendarService } from '../../services/airingCalendarService';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { useTracking } from '../../context/TrackingContext';
@@ -43,12 +47,14 @@ export default function ActivityScreen() {
   } = useTracking();
   const [activeSegment, setActiveSegment] = useState<'history' | 'stats' | 'settings'>('history');
   const [notificationsActive, setNotificationsActive] = useState(true);
+  const [autoSyncActive, setAutoSyncActive] = useState(true);
   const [hapticsActive, setHapticsActive] = useState(feedback.isHapticsEnabled());
 
   useFocusEffect(
     useCallback(() => {
       refreshTracking();
       isNotificationsEnabled().then(setNotificationsActive);
+      isAutoSyncQueueEnabled().then(setAutoSyncActive);
       setHapticsActive(feedback.isHapticsEnabled());
     }, [refreshTracking])
   );
@@ -58,6 +64,22 @@ export default function ActivityScreen() {
     setNotificationsActive(next);
     await setNotificationsEnabled(next);
     feedback.toggle();
+  };
+
+  const handleToggleAutoSync = async () => {
+    const next = !autoSyncActive;
+    setAutoSyncActive(next);
+    await setAutoSyncQueueEnabled(next);
+    feedback.toggle();
+
+    if (next) {
+      const trackedTvIds = Object.keys(tracking || {}).filter((id) => !id.startsWith('movie-'));
+      airingCalendarService.getReleaseRadar(trackedTvIds).then((radar) => {
+        if (radar?.myRadar?.length) {
+          syncQueueRadarAlerts(radar.myRadar);
+        }
+      }).catch(() => {});
+    }
   };
 
   const handleToggleHaptics = async () => {
@@ -724,6 +746,25 @@ export default function ActivityScreen() {
                   <View style={[styles.toggleDot, notificationsActive && styles.toggleDotActive]} />
                   <Text style={[styles.toggleText, notificationsActive && styles.toggleTextActive]}>
                     {notificationsActive ? 'ENABLED' : 'MUTED'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.settingActionRow, { marginTop: 10 }]}>
+                <View style={{ flex: 1, marginRight: 10 }}>
+                  <Text style={styles.settingStatusLabel}>AUTO-SYNC QUEUE RADAR</Text>
+                  <Text style={styles.settingSubDesc}>
+                    Auto-schedules 9:00 AM alerts for all upcoming broadcasts in queue
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.toggleBtn, autoSyncActive && styles.toggleBtnActive]}
+                  onPress={handleToggleAutoSync}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.toggleDot, autoSyncActive && styles.toggleDotActive]} />
+                  <Text style={[styles.toggleText, autoSyncActive && styles.toggleTextActive]}>
+                    {autoSyncActive ? 'ACTIVE' : 'OFF'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1476,6 +1517,13 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     letterSpacing: Platform.OS === 'ios' ? 1 : 0.5,
     includeFontPadding: false,
+  },
+  settingSubDesc: {
+    fontFamily: typography.fontBody,
+    fontSize: 9.5,
+    color: colors.textMuted,
+    lineHeight: 13,
+    marginTop: 2,
   },
   settingsActionBtn: {
     flexDirection: 'row',

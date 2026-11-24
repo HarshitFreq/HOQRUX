@@ -3,23 +3,45 @@ import { TouchableOpacity, Text, StyleSheet, Linking, View, Platform } from 'rea
 import { StreamingProvider } from '../services/types';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
+import { feedback } from '../utils/feedback';
+import { resolveStreamingUrls, isDirectStreamingUrl } from '../utils/streamingLinks';
 
 interface StreamingBadgeProps {
   provider: StreamingProvider;
+  mediaTitle?: string;
   compact?: boolean;
 }
 
-export const StreamingBadge: React.FC<StreamingBadgeProps> = ({ provider, compact = false }) => {
+export const StreamingBadge: React.FC<StreamingBadgeProps> = ({
+  provider,
+  mediaTitle = '',
+  compact = false,
+}) => {
+  // Validate or resolve direct platform URL on the fly
+  const resolved = React.useMemo(() => {
+    if (isDirectStreamingUrl(provider.webUrl)) {
+      return {
+        webUrl: provider.webUrl!,
+        appUrl: provider.appUrl,
+        badgeColor: provider.badgeColor || '#1A1A24',
+      };
+    }
+    return resolveStreamingUrls(provider.name, mediaTitle, provider.type);
+  }, [provider.name, provider.webUrl, provider.appUrl, provider.type, provider.badgeColor, mediaTitle]);
+
   const handlePress = async () => {
+    feedback.tap();
     try {
-      if (provider.appUrl && (await Linking.canOpenURL(provider.appUrl))) {
-        await Linking.openURL(provider.appUrl);
-      } else if (provider.webUrl) {
-        await Linking.openURL(provider.webUrl);
+      if (resolved.appUrl && (await Linking.canOpenURL(resolved.appUrl))) {
+        await Linking.openURL(resolved.appUrl);
+        return;
+      }
+      if (resolved.webUrl) {
+        await Linking.openURL(resolved.webUrl);
       }
     } catch {
-      if (provider.webUrl) {
-        Linking.openURL(provider.webUrl);
+      if (resolved.webUrl) {
+        Linking.openURL(resolved.webUrl);
       }
     }
   };
@@ -28,8 +50,17 @@ export const StreamingBadge: React.FC<StreamingBadgeProps> = ({ provider, compac
     <TouchableOpacity
       activeOpacity={0.75}
       onPress={handlePress}
-      style={[styles.badge, compact && styles.compactBadge]}
+      style={[
+        styles.badge,
+        compact && styles.compactBadge,
+      ]}
     >
+      <View
+        style={[
+          styles.colorIndicator,
+          { backgroundColor: resolved.badgeColor || colors.accent },
+        ]}
+      />
       <Text style={[styles.name, compact && styles.compactName]} numberOfLines={1}>
         {provider.name.toUpperCase()}
       </Text>
@@ -56,6 +87,12 @@ const styles = StyleSheet.create({
   compactBadge: {
     paddingVertical: 4,
     paddingHorizontal: 7,
+  },
+  colorIndicator: {
+    width: 4,
+    height: 10,
+    borderRadius: 1,
+    marginRight: 6,
   },
   name: {
     color: colors.textPrimary,

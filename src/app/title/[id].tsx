@@ -532,7 +532,7 @@ export default function TitleDetailScreen() {
                 <View style={styles.providersRow}>
                   {(item.providers || tmdbService.generateFallbackProviders(item.title)).map(
                     (prov) => (
-                      <StreamingBadge key={prov.id} provider={prov} />
+                      <StreamingBadge key={prov.id} provider={prov} mediaTitle={item.title} />
                     )
                   )}
                 </View>

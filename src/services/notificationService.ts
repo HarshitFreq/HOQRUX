@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const NOTIFICATIONS_ENABLED_KEY = 'hoqrux_notifications_enabled';
+const AUTO_SYNC_QUEUE_KEY = 'hoqrux_auto_sync_queue_radar';
 const SCHEDULED_ALERTS_KEY = 'hoqrux_scheduled_alerts';
 const CHANNEL_ID = 'release-radar';
 
@@ -13,6 +14,7 @@ export interface ReleaseAlertItem {
   type?: 'movie' | 'tv' | 'anime';
   releaseDate: string; // YYYY-MM-DD
   episodeInfo?: string; // e.g. "S02E05: The Reckoning"
+  posterPath?: string;
   notificationId?: string;
 }
 
@@ -197,4 +199,95 @@ export async function cancelReleaseAlert(itemId: string | number): Promise<boole
     return false;
   }
 }
+
+/** Check if Auto-Sync Queue Radar is enabled */
+export async function isAutoSyncQueueEnabled(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(AUTO_SYNC_QUEUE_KEY);
+    return val === null ? true : val === 'true';
+  } catch {
+    return true;
+  }
+}
+
+/** Toggle Auto-Sync Queue Radar setting */
+export async function setAutoSyncQueueEnabled(enabled: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(AUTO_SYNC_QUEUE_KEY, String(enabled));
+  } catch (error) {
+    console.warn('[NotificationService] Failed to set auto-sync queue enabled:', error);
+  }
+}
+
+export interface SyncQueueResult {
+  newlyScheduled: number;
+  totalActive: number;
+}
+
+/**
+ * Automatically schedule notification alerts at 9:00 AM on air dates
+ * for all upcoming episodes/films in the user's active queue.
+ * Only schedules future or today broadcasts (does not schedule past episodes).
+ */
+export async function syncQueueRadarAlerts(
+  episodes: {
+    showId: string;
+    showTitle: string;
+    airDate: string;
+    seasonNumber?: number;
+    episodeNumber?: number;
+    episodeTitle?: string;
+    daysUntil: number;
+    showPoster?: string;
+  }[]
+): Promise<SyncQueueResult> {
+  if (Platform.OS === 'web') return { newlyScheduled: 0, totalActive: 0 };
+
+  try {
+    const autoSyncActive = await isAutoSyncQueueEnabled();
+    if (!autoSyncActive) {
+      const currentAlerts = await getScheduledAlerts();
+      return { newlyScheduled: 0, totalActive: Object.keys(currentAlerts).length };
+    }
+
+    const currentAlerts = await getScheduledAlerts();
+    let newlyScheduled = 0;
+
+    for (const ep of episodes) {
+      // Only schedule upcoming broadcasts (today or future)
+      if (ep.daysUntil < 0) continue;
+
+      const key = String(ep.showId);
+      if (!currentAlerts[key]) {
+        const episodeInfo =
+          ep.seasonNumber !== undefined && ep.episodeNumber !== undefined
+            ? `S${ep.seasonNumber}:E${ep.episodeNumber}${ep.episodeTitle ? ` "${ep.episodeTitle}"` : ''}`
+            : undefined;
+
+        const notifId = await scheduleReleaseAlert({
+          id: ep.showId,
+          title: ep.showTitle,
+          releaseDate: ep.airDate,
+          type: 'tv',
+          episodeInfo,
+          posterPath: ep.showPoster,
+        });
+
+        if (notifId) {
+          newlyScheduled++;
+        }
+      }
+    }
+
+    const finalAlerts = await getScheduledAlerts();
+    return {
+      newlyScheduled,
+      totalActive: Object.keys(finalAlerts).length,
+    };
+  } catch (error) {
+    console.warn('[NotificationService] syncQueueRadarAlerts failed:', error);
+    return { newlyScheduled: 0, totalActive: 0 };
+  }
+}
+
 

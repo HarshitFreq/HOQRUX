@@ -3,6 +3,7 @@ import { MediaItem, StreamingProvider, CollectionInfo, CollectionPart, CastMembe
 import { INITIAL_MEDIA_ITEMS } from './mockData';
 import { storageService } from './storage';
 import { API_CONFIG } from './api/config';
+import { resolveStreamingUrls } from '../utils/streamingLinks';
 
 const TMDB_IMAGE_BASE = `${API_CONFIG.TMDB.IMAGE_BASE_URL}/`;
 const TMDB_API_BASE = API_CONFIG.TMDB.BASE_URL;
@@ -601,28 +602,33 @@ export const tmdbService = {
 
   // Helper to generate streaming links if none exist
   generateFallbackProviders(title: string): StreamingProvider[] {
-    const encoded = encodeURIComponent(title);
+    const netflix = resolveStreamingUrls('Netflix', title, 'stream');
+    const prime = resolveStreamingUrls('Prime Video', title, 'rent');
+    const apple = resolveStreamingUrls('Apple TV', title, 'buy');
     return [
       {
-        id: 'netflix',
+        id: 'fallback-netflix',
         name: 'Netflix',
         type: 'stream',
-        webUrl: `https://www.netflix.com/search?q=${encoded}`,
-        badgeColor: '#E50914',
+        webUrl: netflix.webUrl,
+        appUrl: netflix.appUrl,
+        badgeColor: netflix.badgeColor,
       },
       {
-        id: 'prime',
+        id: 'fallback-prime',
         name: 'Prime Video',
         type: 'rent',
-        webUrl: `https://www.amazon.com/s?k=${encoded}+movie`,
-        badgeColor: '#00A8E1',
+        webUrl: prime.webUrl,
+        appUrl: prime.appUrl,
+        badgeColor: prime.badgeColor,
       },
       {
-        id: 'apple',
+        id: 'fallback-apple',
         name: 'Apple TV',
         type: 'buy',
-        webUrl: `https://tv.apple.com/search?term=${encoded}`,
-        badgeColor: '#000000',
+        webUrl: apple.webUrl,
+        appUrl: apple.appUrl,
+        badgeColor: apple.badgeColor,
       },
     ];
   },
@@ -677,16 +683,36 @@ function formatTmdbDetails(d: any, mediaType: 'movie' | 'tv'): MediaItem {
 
   const providers: StreamingProvider[] = [];
   const usProviders = d['watch/providers']?.results?.US;
-  if (usProviders?.flatrate) {
-    usProviders.flatrate.slice(0, 3).forEach((p: any) => {
-      providers.push({
-        id: `p-${p.provider_id}`,
-        name: p.provider_name,
-        type: 'stream',
-        webUrl: usProviders.link || `https://www.google.com/search?q=watch+${encodeURIComponent(d.title || d.name)}`,
-        badgeColor: '#1A1A24',
-      });
-    });
+  const titleName = d.title || d.name || '';
+  const seenProviders = new Set<string>();
+
+  const addProviders = (list: any[] | undefined, type: 'stream' | 'rent' | 'buy', limit: number) => {
+    if (!Array.isArray(list)) return;
+    for (const p of list) {
+      if (providers.length >= limit) break;
+      const name = p.provider_name || 'Stream';
+      const key = name.toLowerCase();
+      if (!seenProviders.has(key)) {
+        seenProviders.add(key);
+        const resolved = resolveStreamingUrls(name, titleName, type);
+        providers.push({
+          id: `p-${p.provider_id}-${type}`,
+          name,
+          type,
+          webUrl: resolved.webUrl,
+          appUrl: resolved.appUrl,
+          badgeColor: resolved.badgeColor,
+        });
+      }
+    }
+  };
+
+  addProviders(usProviders?.flatrate, 'stream', 4);
+  if (providers.length < 4) {
+    addProviders(usProviders?.rent, 'rent', 4);
+  }
+  if (providers.length < 4) {
+    addProviders(usProviders?.buy, 'buy', 4);
   }
 
   const directors = isMovie
