@@ -44,6 +44,17 @@
       "expo-router",
       "expo-font",
       "expo-image"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "d5fcdf8e-6146-4b31-b8a4-cb65c909a943"
+      }
+    },
+    "owner": "harshitchronicles"
   }
 }
