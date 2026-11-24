@@ -1,7 +1,7 @@
 import React, { useState, memo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from '../utils/haptics';
+import { feedback } from '../utils/feedback';
 import { Episode, MediaItem } from '../services/types';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -23,9 +23,11 @@ export const EpisodeItem: React.FC<EpisodeItemProps> = memo(({ episode, mediaIte
   );
 
   const handleToggle = useCallback(() => {
-    Haptics.impactAsync(
-      isWatched ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium
-    );
+    if (!isWatched) {
+      feedback.success();
+    } else {
+      feedback.toggle();
+    }
     toggleEpisodeWatched(
       mediaItem,
       episode.seasonNumber,
@@ -38,7 +40,7 @@ export const EpisodeItem: React.FC<EpisodeItemProps> = memo(({ episode, mediaIte
   const epNumStr = episode.episodeNumber < 10 ? `0${episode.episodeNumber}` : `${episode.episodeNumber}`;
 
   const handleLongPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    feedback.warning();
     Alert.alert(
       'Batch Log Episodes',
       `Mark all episodes up to Season ${episode.seasonNumber}, Episode ${epNumStr} as watched?`,
@@ -47,7 +49,7 @@ export const EpisodeItem: React.FC<EpisodeItemProps> = memo(({ episode, mediaIte
         {
           text: 'Mark Watched Up To Here',
           onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            feedback.success();
             markEpisodesUpTo(mediaItem, episode.seasonNumber, episode.episodeNumber, true);
           },
         },
@@ -128,7 +130,7 @@ export const EpisodeItem: React.FC<EpisodeItemProps> = memo(({ episode, mediaIte
             <TouchableOpacity
               style={styles.batchLogBtn}
               onPress={() => {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                feedback.success();
                 markEpisodesUpTo(mediaItem, episode.seasonNumber, episode.episodeNumber, true);
               }}
               activeOpacity={0.8}

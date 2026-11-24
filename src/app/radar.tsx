@@ -8,12 +8,13 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from '../utils/haptics';
+import { feedback } from '../utils/feedback';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { useTracking } from '../context/TrackingContext';
@@ -22,6 +23,12 @@ import {
   AiringEpisode,
   ReleaseRadarData,
 } from '../services/airingCalendarService';
+import {
+  scheduleReleaseAlert,
+  cancelReleaseAlert,
+  getScheduledAlerts,
+  testReleaseAlertAsync,
+} from '../services/notificationService';
 
 type RadarSegment = 'my' | 'week' | 'today' | 'upcoming';
 
@@ -29,8 +36,32 @@ export default function ReleaseRadarScreen() {
   const { tracking, resolveMediaItem, setWatchStatus, toggleReminder } = useTracking();
   const [activeSegment, setActiveSegment] = useState<RadarSegment>('my');
   const [radarData, setRadarData] = useState<ReleaseRadarData | null>(null);
+  const [scheduledAlertIds, setScheduledAlertIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [statusBanner, setStatusBanner] = useState<string | null>(null);
+
+  // Load scheduled notification alerts
+  const loadAlerts = useCallback(async () => {
+    try {
+      const alerts = await getScheduledAlerts();
+      setScheduledAlertIds(new Set(Object.keys(alerts)));
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    getScheduledAlerts().then((alerts) => {
+      if (isMounted) {
+        setScheduledAlertIds(new Set(Object.keys(alerts)));
+      }
+    }).catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Extract all tracked show IDs
   const trackedShowIds = useMemo(() => {
@@ -74,9 +105,67 @@ export default function ReleaseRadarScreen() {
   }, [trackedShowIds]);
 
   const handleRefresh = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    feedback.tap();
     loadRadar(true);
-  }, [loadRadar]);
+    loadAlerts();
+  }, [loadRadar, loadAlerts]);
+
+  const handleTestPing = useCallback(async () => {
+    feedback.tap();
+    const ok = await testReleaseAlertAsync();
+    if (ok) {
+      feedback.success();
+      setStatusBanner('TEST PING SCHEDULED // DELIVERY IN 2S');
+      setTimeout(() => setStatusBanner(null), 4000);
+    } else {
+      Alert.alert(
+        'NOTIFICATIONS MUTED',
+        'Enable notification permissions in your system settings to receive Release Radar alerts.'
+      );
+    }
+  }, []);
+
+  const handleToggleAlert = useCallback(
+    async (episode: AiringEpisode) => {
+      const isScheduled = scheduledAlertIds.has(String(episode.showId));
+      if (isScheduled) {
+        feedback.toggle();
+        await cancelReleaseAlert(episode.showId);
+        setScheduledAlertIds((prev) => {
+          const next = new Set(prev);
+          next.delete(String(episode.showId));
+          return next;
+        });
+        setStatusBanner(`ALERT CANCELLED // ${episode.showTitle.toUpperCase()}`);
+        setTimeout(() => setStatusBanner(null), 3000);
+      } else {
+        feedback.success();
+        const epInfo = `S${String(episode.seasonNumber).padStart(2, '0')}E${String(
+          episode.episodeNumber
+        ).padStart(2, '0')}: ${episode.episodeTitle || 'New Episode'}`;
+
+        const notifId = await scheduleReleaseAlert({
+          id: episode.showId,
+          title: episode.showTitle,
+          type: 'tv',
+          releaseDate: episode.airDate,
+          episodeInfo: epInfo,
+        });
+
+        if (notifId) {
+          setScheduledAlertIds((prev) => new Set(prev).add(String(episode.showId)));
+          setStatusBanner(`RADAR ALERT SYNCED // ${episode.showTitle.toUpperCase()}`);
+          setTimeout(() => setStatusBanner(null), 3000);
+        } else {
+          Alert.alert(
+            'PERMISSIONS REQUIRED',
+            'Allow notifications to receive broadcast alerts when this episode airs.'
+          );
+        }
+      }
+    },
+    [scheduledAlertIds]
+  );
 
   const currentEpisodes: AiringEpisode[] = useMemo(() => {
     if (!radarData) return [];
@@ -96,23 +185,23 @@ export default function ReleaseRadarScreen() {
 
   const handleToggleTrack = useCallback(
     async (episode: AiringEpisode) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       const isCurrentlyTracked = Boolean(tracking[episode.showId]);
-      const item = resolveMediaItem(episode.showId) || {
-        id: episode.showId,
-        title: episode.showTitle,
-        posterPath: episode.showPoster,
-        backdropPath: episode.showBackdrop,
-        type: 'tv' as const,
-        releaseYear: new Date(episode.airDate || Date.now()).getFullYear(),
-        overview: episode.overview || '',
-        genres: ['Series'],
-        tmdbRating: 8.0,
-      };
-
       if (isCurrentlyTracked) {
+        feedback.toggle();
         await toggleReminder(episode.showId);
       } else {
+        feedback.success();
+        const item = resolveMediaItem(episode.showId) || {
+          id: episode.showId,
+          title: episode.showTitle,
+          posterPath: episode.showPoster,
+          backdropPath: episode.showBackdrop,
+          type: 'tv' as const,
+          releaseYear: new Date(episode.airDate || Date.now()).getFullYear(),
+          overview: episode.overview || '',
+          genres: ['Series'],
+          tmdbRating: 8.0,
+        };
         await setWatchStatus(item, 'plan_to_watch');
       }
     },
@@ -126,7 +215,7 @@ export default function ReleaseRadarScreen() {
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => {
-            Haptics.selectionAsync();
+            feedback.tap();
             router.back();
           }}
           activeOpacity={0.7}
@@ -135,9 +224,20 @@ export default function ReleaseRadarScreen() {
           <Text style={styles.backBtnText}>BACK</Text>
         </TouchableOpacity>
 
-        <View style={styles.liveIndicator}>
-          <View style={styles.livePulseDot} />
-          <Text style={styles.liveIndicatorText}>BROADCAST RADAR</Text>
+        <View style={styles.headerRightRow}>
+          <TouchableOpacity
+            style={styles.testAlertBtn}
+            onPress={handleTestPing}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="notifications-outline" size={13} color={colors.accent} style={{ marginRight: 4 }} />
+            <Text style={styles.testAlertBtnText}>TEST PING</Text>
+          </TouchableOpacity>
+
+          <View style={styles.liveIndicator}>
+            <View style={styles.livePulseDot} />
+            <Text style={styles.liveIndicatorText}>LIVE</Text>
+          </View>
         </View>
       </View>
 
@@ -149,12 +249,20 @@ export default function ReleaseRadarScreen() {
         </Text>
       </View>
 
+      {/* Status Banner */}
+      {statusBanner && (
+        <View style={styles.statusBannerRow}>
+          <Ionicons name="checkmark-circle-outline" size={13} color={colors.accent} style={{ marginRight: 6 }} />
+          <Text style={styles.statusBannerText}>{statusBanner}</Text>
+        </View>
+      )}
+
       {/* Segment Selector */}
       <View style={styles.segmentContainer}>
         <TouchableOpacity
           style={[styles.segmentBtn, activeSegment === 'my' && styles.segmentBtnActive]}
           onPress={() => {
-            Haptics.selectionAsync();
+            feedback.toggle();
             setActiveSegment('my');
           }}
           activeOpacity={0.7}
@@ -167,7 +275,7 @@ export default function ReleaseRadarScreen() {
         <TouchableOpacity
           style={[styles.segmentBtn, activeSegment === 'week' && styles.segmentBtnActive]}
           onPress={() => {
-            Haptics.selectionAsync();
+            feedback.toggle();
             setActiveSegment('week');
           }}
           activeOpacity={0.7}
@@ -180,7 +288,7 @@ export default function ReleaseRadarScreen() {
         <TouchableOpacity
           style={[styles.segmentBtn, activeSegment === 'today' && styles.segmentBtnActive]}
           onPress={() => {
-            Haptics.selectionAsync();
+            feedback.toggle();
             setActiveSegment('today');
           }}
           activeOpacity={0.7}
@@ -197,7 +305,7 @@ export default function ReleaseRadarScreen() {
             activeSegment === 'upcoming' && styles.segmentBtnActive,
           ]}
           onPress={() => {
-            Haptics.selectionAsync();
+            feedback.toggle();
             setActiveSegment('upcoming');
           }}
           activeOpacity={0.7}
@@ -255,13 +363,14 @@ export default function ReleaseRadarScreen() {
           ) : (
             currentEpisodes.map((ep) => {
               const isTracked = Boolean(tracking[ep.showId]);
+              const isAlertScheduled = scheduledAlertIds.has(String(ep.showId));
               return (
                 <TouchableOpacity
                   key={ep.id}
                   style={styles.episodeCard}
                   activeOpacity={0.8}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    feedback.tap();
                     router.push({
                       pathname: '/title/[id]',
                       params: { id: ep.showId },
@@ -335,21 +444,42 @@ export default function ReleaseRadarScreen() {
                         <Text style={styles.airDateText}>{ep.formattedDate}</Text>
                       </View>
 
-                      <TouchableOpacity
-                        style={[styles.trackBtn, isTracked && styles.trackBtnActive]}
-                        onPress={() => handleToggleTrack(ep)}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons
-                          name={isTracked ? 'checkmark' : 'add'}
-                          size={11}
-                          color={isTracked ? colors.accent : colors.textPrimary}
-                          style={{ marginRight: 3 }}
-                        />
-                        <Text style={[styles.trackBtnText, isTracked && styles.trackBtnTextActive]}>
-                          {isTracked ? 'TRACKED' : 'QUEUE'}
-                        </Text>
-                      </TouchableOpacity>
+                      <View style={styles.cardActionsGroup}>
+                        <TouchableOpacity
+                          style={[styles.bellBtn, isAlertScheduled && styles.bellBtnActive]}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleToggleAlert(ep);
+                          }}
+                          activeOpacity={0.7}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons
+                            name={isAlertScheduled ? 'notifications' : 'notifications-outline'}
+                            size={12}
+                            color={isAlertScheduled ? colors.accent : colors.textMuted}
+                          />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.trackBtn, isTracked && styles.trackBtnActive]}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleToggleTrack(ep);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name={isTracked ? 'checkmark' : 'add'}
+                            size={11}
+                            color={isTracked ? colors.accent : colors.textPrimary}
+                            style={{ marginRight: 3 }}
+                          />
+                          <Text style={[styles.trackBtnText, isTracked && styles.trackBtnTextActive]}>
+                            {isTracked ? 'TRACKED' : 'QUEUE'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -664,5 +794,62 @@ const styles = StyleSheet.create({
   },
   trackBtnTextActive: {
     color: colors.accent,
+  },
+  headerRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  testAlertBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(229, 9, 20, 0.4)',
+    borderRadius: 2,
+  },
+  testAlertBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.accent,
+    letterSpacing: 0.8,
+    includeFontPadding: false,
+  },
+  statusBannerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(229, 9, 20, 0.3)',
+  },
+  statusBannerText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    color: colors.textPrimary,
+    letterSpacing: 0.5,
+    includeFontPadding: false,
+  },
+  cardActionsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  bellBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellBtnActive: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(229, 9, 20, 0.15)',
   },
 });

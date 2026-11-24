@@ -13,6 +13,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from '../../utils/haptics';
+import { feedback } from '../../utils/feedback';
+import {
+  isNotificationsEnabled,
+  setNotificationsEnabled,
+  testReleaseAlertAsync,
+} from '../../services/notificationService';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { useTracking } from '../../context/TrackingContext';
@@ -36,13 +42,44 @@ export default function ActivityScreen() {
     resolveMediaItem,
     refreshTracking,
   } = useTracking();
-  const [activeSegment, setActiveSegment] = useState<'history' | 'stats'>('history');
+  const [activeSegment, setActiveSegment] = useState<'history' | 'stats' | 'settings'>('history');
+  const [notificationsActive, setNotificationsActive] = useState(true);
+  const [hapticsActive, setHapticsActive] = useState(feedback.isHapticsEnabled());
+  const [testAlertSent, setTestAlertSent] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       refreshTracking();
+      isNotificationsEnabled().then(setNotificationsActive);
+      setHapticsActive(feedback.isHapticsEnabled());
     }, [refreshTracking])
   );
+
+  const handleToggleNotifications = async () => {
+    const next = !notificationsActive;
+    setNotificationsActive(next);
+    await setNotificationsEnabled(next);
+    feedback.toggle();
+  };
+
+  const handleToggleHaptics = async () => {
+    const next = !hapticsActive;
+    setHapticsActive(next);
+    await feedback.setHapticsEnabled(next);
+    feedback.toggle();
+  };
+
+  const handleTestPing = async () => {
+    feedback.tap();
+    const ok = await testReleaseAlertAsync();
+    if (ok) {
+      setTestAlertSent(true);
+      feedback.success();
+      setTimeout(() => setTestAlertSent(false), 3000);
+    } else {
+      Alert.alert('NOTIFICATIONS MUTED', 'Please grant notification permissions in system settings.');
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -352,7 +389,7 @@ export default function ActivityScreen() {
           <TouchableOpacity
             style={[styles.segmentBtn, activeSegment === 'history' && styles.segmentBtnActive]}
             onPress={() => {
-              Haptics.selectionAsync();
+              feedback.toggle();
               setActiveSegment('history');
             }}
             activeOpacity={0.7}
@@ -362,19 +399,31 @@ export default function ActivityScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.segmentBtn,
-              { borderRightWidth: 0 },
-              activeSegment === 'stats' && styles.segmentBtnActive,
-            ]}
+            style={[styles.segmentBtn, activeSegment === 'stats' && styles.segmentBtnActive]}
             onPress={() => {
-              Haptics.selectionAsync();
+              feedback.toggle();
               setActiveSegment('stats');
             }}
             activeOpacity={0.7}
           >
             <Text style={[styles.segmentText, activeSegment === 'stats' && styles.segmentTextActive]}>
               STATS
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmentBtn,
+              { borderRightWidth: 0 },
+              activeSegment === 'settings' && styles.segmentBtnActive,
+            ]}
+            onPress={() => {
+              feedback.toggle();
+              setActiveSegment('settings');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.segmentText, activeSegment === 'settings' && styles.segmentTextActive]}>
+              SETTINGS
             </Text>
           </TouchableOpacity>
         </View>
@@ -653,6 +702,131 @@ export default function ActivityScreen() {
                   {history.length} {history.length === 1 ? 'SESSION' : 'SESSIONS'} LOGGED
                 </Text>
                 <Text style={styles.cadenceLegendText}>TODAY</Text>
+              </View>
+            </View>
+          </ScrollView>
+        )}
+
+        {/* Segment 3: Settings & Preferences */}
+        {activeSegment === 'settings' && (
+          <ScrollView
+            style={styles.scrollList}
+            contentContainerStyle={styles.settingsScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Release Radar Notifications Card */}
+            <View style={styles.settingsCard}>
+              <View style={styles.settingsHeaderRow}>
+                <View style={styles.settingsHeaderIconBox}>
+                  <Ionicons name="notifications" size={16} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.settingsCardTitle}>RELEASE RADAR NOTIFICATIONS</Text>
+                  <Text style={styles.settingsCardDesc}>
+                    Alerts on air dates for scheduled episodes and theatrical releases in your queue.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.settingActionRow}>
+                <TouchableOpacity
+                  style={[styles.toggleBtn, notificationsActive && styles.toggleBtnActive]}
+                  onPress={handleToggleNotifications}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.toggleDot, notificationsActive && styles.toggleDotActive]} />
+                  <Text style={[styles.toggleText, notificationsActive && styles.toggleTextActive]}>
+                    {notificationsActive ? 'ENABLED' : 'MUTED'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.testPingBtn}
+                  onPress={handleTestPing}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="send" size={11} color={colors.textPrimary} style={{ marginRight: 4 }} />
+                  <Text style={styles.testPingBtnText}>
+                    {testAlertSent ? 'PING SENT' : 'TEST PING (2S)'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Tactile Haptics Card */}
+            <View style={styles.settingsCard}>
+              <View style={styles.settingsHeaderRow}>
+                <View style={styles.settingsHeaderIconBox}>
+                  <Ionicons name="hardware-chip" size={16} color={colors.textPrimary} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.settingsCardTitle}>TACTILE HAPTIC FEEDBACK</Text>
+                  <Text style={styles.settingsCardDesc}>
+                    Crisp physical vibration feedback on episode marks, tab changes, and rating sliders.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.settingActionRow}>
+                <TouchableOpacity
+                  style={[styles.toggleBtn, hapticsActive && styles.toggleBtnActive]}
+                  onPress={handleToggleHaptics}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.toggleDot, hapticsActive && styles.toggleDotActive]} />
+                  <Text style={[styles.toggleText, hapticsActive && styles.toggleTextActive]}>
+                    {hapticsActive ? 'ACTIVE' : 'OFF'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.testPingBtn}
+                  onPress={() => {
+                    feedback.tap();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="finger-print" size={12} color={colors.textPrimary} style={{ marginRight: 4 }} />
+                  <Text style={styles.testPingBtnText}>TEST PULSE</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Data & Compliance Card */}
+            <View style={styles.settingsCard}>
+              <View style={styles.settingsHeaderRow}>
+                <View style={styles.settingsHeaderIconBox}>
+                  <Ionicons name="shield-checkmark" size={16} color={colors.textPrimary} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.settingsCardTitle}>SYSTEM & COMPLIANCE</Text>
+                  <Text style={styles.settingsCardDesc}>
+                    Architecture, data storage details, and privacy documentation.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.settingActionRow, { gap: 8 }]}>
+                <TouchableOpacity
+                  style={[styles.testPingBtn, { flex: 1 }]}
+                  onPress={() => {
+                    feedback.tap();
+                    setIsLegalModalOpen(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="document-text-outline" size={12} color={colors.textPrimary} style={{ marginRight: 4 }} />
+                  <Text style={styles.testPingBtnText}>LEGAL & POLICIES</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.testPingBtn, { flex: 1, borderColor: colors.borderLight }]}
+                  onPress={handleClearHistory}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="trash-outline" size={12} color={colors.accent} style={{ marginRight: 4 }} />
+                  <Text style={[styles.testPingBtnText, { color: colors.accent }]}>DATA CLEAR</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </ScrollView>
@@ -1245,6 +1419,106 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontBold,
     fontSize: 8.5,
     color: colors.textMuted,
+    letterSpacing: 0.8,
+    includeFontPadding: false,
+  },
+  settingsScrollContent: {
+    paddingBottom: 40,
+    gap: 12,
+  },
+  settingsCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    borderRadius: 2,
+  },
+  settingsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  settingsHeaderIconBox: {
+    width: 32,
+    height: 32,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsCardTitle: {
+    fontFamily: typography.fontBlack,
+    fontSize: 11,
+    color: colors.textPrimary,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    includeFontPadding: false,
+    marginBottom: 3,
+  },
+  settingsCardDesc: {
+    fontFamily: typography.fontBody,
+    fontSize: 10.5,
+    color: colors.textMuted,
+    lineHeight: 15,
+  },
+  settingActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderHairline,
+  },
+  toggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 2,
+    gap: 6,
+  },
+  toggleBtnActive: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(229, 9, 20, 0.1)',
+  },
+  toggleDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.textMuted,
+  },
+  toggleDotActive: {
+    backgroundColor: colors.accent,
+  },
+  toggleText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    includeFontPadding: false,
+  },
+  toggleTextActive: {
+    color: colors.accent,
+  },
+  testPingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 2,
+    justifyContent: 'center',
+  },
+  testPingBtnText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9,
+    color: colors.textPrimary,
     letterSpacing: 0.8,
     includeFontPadding: false,
   },

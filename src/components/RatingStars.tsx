@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from '../utils/haptics';
+import { feedback } from '../utils/feedback';
 import { colors } from '../theme/colors';
 
 interface RatingStarsProps {
@@ -23,7 +23,7 @@ export const RatingStars: React.FC<RatingStarsProps> = ({
 
   const handleStarPress = (starIndex: number) => {
     if (!interactive || !onRatingChange) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    feedback.toggle();
     
     // Toggle full or half star
     if (rating === starIndex) {

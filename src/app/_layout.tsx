@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { Stack, type ErrorBoundaryProps } from 'expo-router';
+import { Stack, router, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider } from '../context/AuthContext';
 import { TrackingProvider } from '../context/TrackingContext';
+import { initNotifications } from '../services/notificationService';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
@@ -47,6 +49,31 @@ export default function RootLayout() {
     'Satoshi-Light': require('../../assets/fonts/Satoshi-Light.ttf'),
     'Asimovian-Regular': require('../../assets/fonts/Asimovian-Regular.ttf'),
   });
+
+  useEffect(() => {
+    initNotifications();
+
+    if (Platform.OS === 'web') return;
+
+    // Check if app was opened by a notification tap
+    const lastResponse = Notifications.getLastNotificationResponse();
+    if (lastResponse?.notification) {
+      const url = lastResponse.notification.request.content.data?.url;
+      if (typeof url === 'string') {
+        router.push(url as any);
+      }
+    }
+
+    // Listen for notification responses while running
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const url = response.notification.request.content.data?.url;
+      if (typeof url === 'string') {
+        router.push(url as any);
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   if (!fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: colors.void }} />;

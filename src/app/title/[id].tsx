@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from '../../utils/haptics';
+import { feedback } from '../../utils/feedback';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { useTracking } from '../../context/TrackingContext';
@@ -225,25 +226,25 @@ export default function TitleDetailScreen() {
   const progress = isSeries ? getShowProgress(item) : null;
 
   const handleStatusChange = async (status: WatchStatus) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    feedback.success();
     if (item) await cacheMediaItem(item);
     setWatchStatus(item, status);
   };
 
   const handleRatingChange = (newRating: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    feedback.toggle();
     cacheMediaItem(item);
     setRating(item.id, newRating);
   };
 
   const handleSaveReview = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    feedback.success();
     setReview(item.id, reviewText);
     setIsReviewEditing(false);
   };
 
   const handleToggleFavorite = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    feedback.toggle();
     toggleFavorite(item.id);
   };
 

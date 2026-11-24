@@ -12,7 +12,7 @@ import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from '../utils/haptics';
+import { feedback } from '../utils/feedback';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
@@ -35,7 +35,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = memo(({
   onSelectCategory,
 }) => {
   const handleTabPress = (cat: HomeCategory) => {
-    Haptics.selectionAsync();
+    feedback.toggle();
     onSelectCategory(cat);
   };
 

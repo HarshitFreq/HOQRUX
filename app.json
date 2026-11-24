@@ -21,7 +21,9 @@
     "android": {
       "package": "com.harshit.hoqrux",
       "versionCode": 1,
-      "permissions": [],
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -38,7 +40,15 @@
       "expo-router",
       "expo-font",
       "expo-image",
-      "./plugins/withDynamicAndroidIcon.js"
+      "./plugins/withDynamicAndroidIcon.js",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#E50914",
+          "defaultChannel": "release-radar"
+        }
+      ]
     ],
     "extra": {
       "router": {
