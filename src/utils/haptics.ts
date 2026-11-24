@@ -5,6 +5,7 @@ export const ImpactFeedbackStyle = ExpoHaptics.ImpactFeedbackStyle;
 export const NotificationFeedbackType = ExpoHaptics.NotificationFeedbackType;
 
 export async function selectionAsync(): Promise<void> {
+  if (Platform.OS === 'web') return;
   try {
     if (Platform.OS === 'ios') {
       await ExpoHaptics.selectionAsync();
@@ -19,6 +20,7 @@ export async function selectionAsync(): Promise<void> {
 export async function impactAsync(
   style: ExpoHaptics.ImpactFeedbackStyle = ExpoHaptics.ImpactFeedbackStyle.Light
 ): Promise<void> {
+  if (Platform.OS === 'web') return;
   try {
     await ExpoHaptics.impactAsync(style);
   } catch {
@@ -29,6 +31,7 @@ export async function impactAsync(
 export async function notificationAsync(
   type: ExpoHaptics.NotificationFeedbackType = ExpoHaptics.NotificationFeedbackType.Success
 ): Promise<void> {
+  if (Platform.OS === 'web') return;
   try {
     await ExpoHaptics.notificationAsync(type);
   } catch {

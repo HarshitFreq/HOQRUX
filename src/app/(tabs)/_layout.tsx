@@ -17,10 +17,12 @@ export default function TabLayout() {
       typeof navigator !== 'undefined' &&
       /iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
 
-  // Generous bottom padding to clear Android navigation gestures and iOS physical home indicator (34px)
-  const bottomInset = Math.max(insets.bottom, isIOS ? 34 : 12);
-  const bottomPadding = isIOS ? Math.max(bottomInset, 34) : bottomInset + 10;
-  const barHeight = 52 + bottomPadding;
+  // On iOS devices with home indicator (iPhone X-16), physical bottom inset is 34px.
+  // On Android/desktop, bottom inset is 0-16px.
+  const bottomInset = Math.max(insets.bottom, isIOS ? 30 : 6);
+  const bottomPadding = isIOS ? Math.max(bottomInset, 30) : bottomInset + 4;
+  // Tab items need 52px (28px icon + 12px label + padding). Total height = 54 + 4(paddingTop) + bottomPadding
+  const barHeight = 58 + bottomPadding;
 
   return (
     <Tabs
@@ -46,18 +48,13 @@ export default function TabLayout() {
           borderTopColor: colors.border,
           borderTopWidth: 1,
           height: barHeight,
+          paddingTop: 4,
           paddingBottom: bottomPadding,
-          paddingTop: 8,
           elevation: 0,
-          ...(isWeb && isIOS
-            ? {
-                paddingBottom: 'max(env(safe-area-inset-bottom, 34px), 34px)' as any,
-                height: 'calc(52px + max(env(safe-area-inset-bottom, 34px), 34px))' as any,
-              }
-            : {}),
         },
         tabBarItemStyle: {
           paddingVertical: 0,
+          height: 52,
           justifyContent: 'center',
           alignItems: 'center',
         },

@@ -31,6 +31,15 @@ export const StreamingBadge: React.FC<StreamingBadgeProps> = ({
 
   const handlePress = async () => {
     feedback.tap();
+
+    // On Web / PWA, directly open external platform link in a new tab to avoid Safari popup blocking
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (resolved.webUrl) {
+        window.open(resolved.webUrl, '_blank', 'noopener,noreferrer');
+      }
+      return;
+    }
+
     try {
       if (resolved.appUrl && (await Linking.canOpenURL(resolved.appUrl))) {
         await Linking.openURL(resolved.appUrl);
