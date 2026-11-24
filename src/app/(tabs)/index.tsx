@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 110,
+    paddingBottom: 150,
     paddingTop: 12,
   },
   emptySpotlightCard: {

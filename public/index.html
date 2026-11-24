@@ -39,11 +39,22 @@
         -webkit-tap-highlight-color: transparent;
       }
 
-      html,
-      body {
+      html {
         height: 100%;
-        height: 100dvh;
         height: -webkit-fill-available;
+        height: 100dvh;
+      }
+
+      body {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        height: -webkit-fill-available;
+        height: 100dvh;
         margin: 0;
         padding: 0;
         background-color: #050507;
@@ -55,13 +66,15 @@
       }
 
       #root {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         display: flex;
         flex-direction: column;
-        height: 100%;
-        height: 100dvh;
-        height: -webkit-fill-available;
         width: 100%;
-        flex: 1;
+        height: 100%;
         background-color: #050507;
         overflow: hidden;
       }
@@ -72,6 +85,7 @@
         flex: 1;
         height: 100%;
         width: 100%;
+        overflow: hidden;
       }
 
       /* Swiss Brutalist Desktop Centering Frame for Mouse / Laptop screens */

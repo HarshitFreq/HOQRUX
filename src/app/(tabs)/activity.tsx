@@ -242,7 +242,7 @@ export default function ActivityScreen() {
   const logCount = history?.length || 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
         {/* Minimal Clean Profile Header */}
         <View style={styles.header}>
@@ -1107,7 +1107,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 150,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1430,7 +1430,7 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   settingsScrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 150,
     gap: 12,
   },
   settingsCard: {

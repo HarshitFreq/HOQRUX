@@ -125,7 +125,7 @@ export default function ListsScreen() {
       /iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: 150,
   },
   header: {
     flexDirection: 'row',

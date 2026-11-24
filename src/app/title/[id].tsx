@@ -1107,7 +1107,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 80,
+    paddingBottom: 120,
   },
   backdropContainer: {
     width: '100%',

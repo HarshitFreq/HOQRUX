@@ -1137,7 +1137,7 @@ const styles = StyleSheet.create({
   searchGridContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 110,
+    paddingBottom: 150,
   },
   searchResultsHeader: {
     flexDirection: 'row',
@@ -1174,7 +1174,7 @@ const styles = StyleSheet.create({
   catalogueGridContent: {
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 110,
+    paddingBottom: 150,
   },
   skeletonGrid: {
     flexDirection: 'row',

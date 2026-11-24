@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 14,
-    paddingBottom: 90,
+    paddingBottom: 120,
   },
   emptyContainer: {
     alignItems: 'center',

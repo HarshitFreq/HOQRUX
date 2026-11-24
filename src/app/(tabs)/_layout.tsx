@@ -9,17 +9,18 @@ import { typography } from '../../theme/typography';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const isWeb = Platform.OS === 'web';
 
   const isIOS =
     Platform.OS === 'ios' ||
-    (Platform.OS === 'web' &&
+    (isWeb &&
       typeof navigator !== 'undefined' &&
       /iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
 
-  // Generous bottom padding to clear Android navigation gestures and iOS home indicator
-  const bottomInset = Math.max(insets.bottom, isIOS ? 24 : 12);
-  const bottomPadding = isIOS ? Math.max(bottomInset, 28) : bottomInset + 10;
-  const barHeight = 54 + bottomPadding;
+  // Generous bottom padding to clear Android navigation gestures and iOS physical home indicator (34px)
+  const bottomInset = Math.max(insets.bottom, isIOS ? 34 : 12);
+  const bottomPadding = isIOS ? Math.max(bottomInset, 34) : bottomInset + 10;
+  const barHeight = 52 + bottomPadding;
 
   return (
     <Tabs
@@ -48,6 +49,12 @@ export default function TabLayout() {
           paddingBottom: bottomPadding,
           paddingTop: 8,
           elevation: 0,
+          ...(isWeb && isIOS
+            ? {
+                paddingBottom: 'max(env(safe-area-inset-bottom, 34px), 34px)' as any,
+                height: 'calc(52px + max(env(safe-area-inset-bottom, 34px), 34px))' as any,
+              }
+            : {}),
         },
         tabBarItemStyle: {
           paddingVertical: 0,
