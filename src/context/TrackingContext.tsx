@@ -944,13 +944,19 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           genreMap[g] = (genreMap[g] || 0) + 1;
         });
 
-        if (item.type === 'movie' && tr.status === 'completed') {
-          totalMoviesWatched += 1;
-          totalMinutes += (item.runtime || 120) * (1 + (tr.rewatchCount || 0));
-        } else if (item.type === 'tv') {
+        const isEpisodic = item.type === 'tv' || (item.type === 'anime' && ((item.totalEpisodes || 0) > 1 || (item.seasons && item.seasons.length > 0)));
+
+        if (isEpisodic) {
           const watchedEps = Object.values(tr.watchedEpisodes || {}).filter(e => e.watched).length;
-          totalEpisodesWatched += watchedEps;
-          totalMinutes += watchedEps * (item.runtime || 50);
+          const effectiveEps = watchedEps > 0 ? watchedEps : (tr.status === 'completed' ? (item.totalEpisodes || 12) : 0);
+          totalEpisodesWatched += effectiveEps;
+          totalMinutes += effectiveEps * (item.runtime || (item.type === 'anime' ? 24 : 50));
+        } else {
+          // Feature film / Movie / Anime Movie
+          if (tr.status === 'completed') {
+            totalMoviesWatched += 1;
+            totalMinutes += (item.runtime || 115) * (1 + (tr.rewatchCount || 0));
+          }
         }
       } else {
         // Fallback calculation for non-cached items

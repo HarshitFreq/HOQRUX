@@ -3,6 +3,17 @@ import { POPULAR_ANIME_MAP } from '../mapping/fribbAnime';
 
 const ANILIST_URL = 'https://graphql.anilist.co';
 
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface AniListMedia {
   id: number;
   idMal?: number;
@@ -206,7 +217,7 @@ query ($id: Int) {
 export const anilistService = {
   async getMediaById(id: number): Promise<MediaItem | null> {
     try {
-      const res = await fetch(ANILIST_URL, {
+      const res = await fetchWithTimeout(ANILIST_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -225,7 +236,7 @@ export const anilistService = {
 
   async search(query: string, page = 1, perPage = 15): Promise<MediaItem[]> {
     try {
-      const res = await fetch(ANILIST_URL, {
+      const res = await fetchWithTimeout(ANILIST_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -243,7 +254,7 @@ export const anilistService = {
 
   async getTrending(page = 1, perPage = 18, genre?: string): Promise<MediaItem[]> {
     try {
-      const res = await fetch(ANILIST_URL, {
+      const res = await fetchWithTimeout(ANILIST_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

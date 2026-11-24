@@ -35,6 +35,41 @@ const LEGACY_KEYS = {
 // Tracks whether the remote Supabase schema has been updated to accept TEXT user IDs
 let isCloudSchemaCompatible: boolean | null = null;
 
+/**
+ * Ensures user IDs sent to Supabase are always valid UUID-compliant strings,
+ * allowing compatibility with both standard UUID columns and TEXT columns.
+ */
+export function toCloudUserId(userId: string): string {
+  if (!userId || userId === 'guest') return userId;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(userId)) return userId;
+
+  let h1 = 0xdeadbeef ^ 0x12345678;
+  let h2 = 0x41c6ce57 ^ 0x87654321;
+  let h3 = 0x9e3779b9;
+  let h4 = 0x7feb352d;
+  for (let i = 0; i < userId.length; i++) {
+    const ch = userId.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+    h3 = Math.imul(h3 ^ ch, 2246822507);
+    h4 = Math.imul(h4 ^ ch, 3266489909);
+  }
+  const s1 = (h1 >>> 0).toString(16).padStart(8, '0');
+  const s2 = (h2 >>> 0).toString(16).padStart(8, '0');
+  const s3 = (h3 >>> 0).toString(16).padStart(8, '0');
+  const s4 = (h4 >>> 0).toString(16).padStart(8, '0');
+
+  const fullHex = s1 + s2 + s3 + s4;
+  return [
+    fullHex.slice(0, 8),
+    fullHex.slice(8, 12),
+    '4' + fullHex.slice(13, 16),
+    '8' + fullHex.slice(17, 20),
+    fullHex.slice(20, 32),
+  ].join('-');
+}
+
 function getUserKey(userId: string, type: 'tracking' | 'watchlists' | 'history' | 'cache'): string {
   const safeId = (userId || 'guest').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
   return `@hoqrux_u_${safeId}_${type}_v2`;
@@ -427,20 +462,22 @@ export const databaseService = {
       return null;
     }
 
+    const cloudUserId = toCloudUserId(userId);
+
     try {
       const [trackingRes, listsRes, historyRes] = await Promise.all([
         supabase
           .from('user_tracking')
           .select('title_id, status, rating, is_favorite, reminder_set, data, updated_at')
-          .eq('user_id', userId),
+          .eq('user_id', cloudUserId),
         supabase
           .from('user_watchlists')
           .select('list_id, name, is_custom, accent_color, data, updated_at')
-          .eq('user_id', userId),
+          .eq('user_id', cloudUserId),
         supabase
           .from('user_history')
           .select('history_id, title_id, data, watched_at')
-          .eq('user_id', userId)
+          .eq('user_id', cloudUserId)
           .order('watched_at', { ascending: false }),
       ]);
 
@@ -518,9 +555,11 @@ export const databaseService = {
       return { success: false, error: 'Offline or guest user' };
     }
 
+    const cloudUserId = toCloudUserId(userId);
+
     try {
       const { error } = await supabase.from('user_tracking').upsert({
-        user_id: userId,
+        user_id: cloudUserId,
         title_id: titleId,
         status: track.status,
         rating: track.rating || null,
@@ -553,9 +592,11 @@ export const databaseService = {
       return { success: false, error: 'Offline or guest user' };
     }
 
+    const cloudUserId = toCloudUserId(userId);
+
     try {
       const { error } = await supabase.from('user_watchlists').upsert({
-        user_id: userId,
+        user_id: cloudUserId,
         list_id: list.id,
         name: list.name,
         is_custom: list.isCustom,
@@ -589,9 +630,11 @@ export const databaseService = {
       return { success: false, error: 'Offline or guest user' };
     }
 
+    const cloudUserId = toCloudUserId(userId);
+
     try {
       const { error } = await supabase.from('user_history').upsert({
-        user_id: userId,
+        user_id: cloudUserId,
         history_id: entry.id,
         title_id: entry.titleId,
         data: entry,
@@ -617,11 +660,12 @@ export const databaseService = {
   async deleteHistoryEntryFromCloud(userId: string, historyId: string): Promise<boolean> {
     const supabase = supabaseService.getClient();
     if (!supabase || !userId || userId === 'guest') return false;
+    const cloudUserId = toCloudUserId(userId);
     try {
       await supabase
         .from('user_history')
         .delete()
-        .eq('user_id', userId)
+        .eq('user_id', cloudUserId)
         .eq('history_id', historyId);
       return true;
     } catch (err) {
@@ -636,11 +680,12 @@ export const databaseService = {
   async clearHistoryFromCloud(userId: string): Promise<boolean> {
     const supabase = supabaseService.getClient();
     if (!supabase || !userId || userId === 'guest') return false;
+    const cloudUserId = toCloudUserId(userId);
     try {
       await supabase
         .from('user_history')
         .delete()
-        .eq('user_id', userId);
+        .eq('user_id', cloudUserId);
       return true;
     } catch (err) {
       console.warn(`[Cloud Database] clearHistory failed:`, err);
@@ -654,11 +699,12 @@ export const databaseService = {
   async deleteTitleTrackingFromCloud(userId: string, titleId: string): Promise<boolean> {
     const supabase = supabaseService.getClient();
     if (!supabase || !userId || userId === 'guest') return false;
+    const cloudUserId = toCloudUserId(userId);
     try {
       await supabase
         .from('user_tracking')
         .delete()
-        .eq('user_id', userId)
+        .eq('user_id', cloudUserId)
         .eq('title_id', titleId);
       return true;
     } catch (err) {
@@ -673,11 +719,12 @@ export const databaseService = {
   async deleteWatchlistFromCloud(userId: string, listId: string): Promise<boolean> {
     const supabase = supabaseService.getClient();
     if (!supabase || !userId || userId === 'guest') return false;
+    const cloudUserId = toCloudUserId(userId);
     try {
       await supabase
         .from('user_watchlists')
         .delete()
-        .eq('user_id', userId)
+        .eq('user_id', cloudUserId)
         .eq('list_id', listId);
       return true;
     } catch (err) {
@@ -705,10 +752,12 @@ export const databaseService = {
       return { success: false, error: 'Offline or guest user' };
     }
 
+    const cloudUserId = toCloudUserId(userId);
+
     try {
       // 1. Prepare tracking rows
       const trackingRows = Object.values(tracking).map((t) => ({
-        user_id: userId,
+        user_id: cloudUserId,
         title_id: t.titleId,
         status: t.status,
         rating: t.rating || null,
@@ -720,7 +769,7 @@ export const databaseService = {
 
       // 2. Prepare watchlist rows
       const watchlistRows = watchlists.map((l) => ({
-        user_id: userId,
+        user_id: cloudUserId,
         list_id: l.id,
         name: l.name,
         is_custom: l.isCustom,
@@ -731,7 +780,7 @@ export const databaseService = {
 
       // 3. Prepare history rows
       const historyRows = history.map((h) => ({
-        user_id: userId,
+        user_id: cloudUserId,
         history_id: h.id,
         title_id: h.titleId,
         data: h,
@@ -740,7 +789,7 @@ export const databaseService = {
 
       // 4. Prepare profile row
       const profileRow = {
-        id: userId,
+        id: cloudUserId,
         email: userProfile?.email || `${userId}@hoqrux.app`,
         username: userProfile?.username || userId,
         updated_at: new Date().toISOString(),
