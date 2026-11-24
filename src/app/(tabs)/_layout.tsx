@@ -10,10 +10,16 @@ import { typography } from '../../theme/typography';
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
+  const isIOS =
+    Platform.OS === 'ios' ||
+    (Platform.OS === 'web' &&
+      typeof navigator !== 'undefined' &&
+      /iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
+
   // Generous bottom padding to clear Android navigation gestures and iOS home indicator
-  const bottomInset = Math.max(insets.bottom, 12);
-  const bottomPadding = Platform.OS === 'ios' ? Math.max(bottomInset, 26) : bottomInset + 10;
-  const barHeight = 56 + bottomPadding;
+  const bottomInset = Math.max(insets.bottom, isIOS ? 24 : 12);
+  const bottomPadding = isIOS ? Math.max(bottomInset, 28) : bottomInset + 10;
+  const barHeight = 54 + bottomPadding;
 
   return (
     <Tabs
@@ -30,7 +36,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontFamily: typography.fontBold,
           fontSize: 10,
-          letterSpacing: Platform.OS === 'ios' ? 0.8 : 0,
+          letterSpacing: isIOS ? 0.8 : 0,
           includeFontPadding: false,
           marginTop: 2,
         },

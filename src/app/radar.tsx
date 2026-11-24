@@ -256,7 +256,11 @@ export default function ReleaseRadarScreen() {
           style={styles.backBtn}
           onPress={() => {
             feedback.tap();
-            router.back();
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)');
+            }
           }}
           activeOpacity={0.7}
         >

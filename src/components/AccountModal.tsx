@@ -123,11 +123,17 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
     );
   };
 
+  const isIOS =
+    Platform.OS === 'ios' ||
+    (Platform.OS === 'web' &&
+      typeof navigator !== 'undefined' &&
+      /iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
+
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={isIOS ? 'padding' : undefined}
       >
         <View style={styles.modalContent}>
           {/* Header */}

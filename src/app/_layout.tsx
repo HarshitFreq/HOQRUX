@@ -4,7 +4,7 @@ import { Stack, router, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider } from '../context/AuthContext';
 import { TrackingProvider } from '../context/TrackingContext';
 import { initNotifications } from '../services/notificationService';
@@ -80,48 +80,50 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <TrackingProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.void },
-            animation: 'fade',
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="title/[id]"
-            options={{
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.void }}>
+      <AuthProvider>
+        <TrackingProvider>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
               headerShown: false,
-              animation: 'slide_from_right',
-            }}
-          />
-          <Stack.Screen
-            name="list/[id]"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-            }}
-          />
-          <Stack.Screen
-            name="radar"
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-            }}
-          />
-          <Stack.Screen
-            name="+not-found"
-            options={{
-              headerShown: false,
+              contentStyle: { backgroundColor: colors.void },
               animation: 'fade',
             }}
-          />
-        </Stack>
-      </TrackingProvider>
-    </AuthProvider>
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="title/[id]"
+              options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="list/[id]"
+              options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="radar"
+              options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="+not-found"
+              options={{
+                headerShown: false,
+                animation: 'fade',
+              }}
+            />
+          </Stack>
+        </TrackingProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

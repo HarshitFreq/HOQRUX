@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from '../../utils/haptics';
@@ -35,6 +35,13 @@ import { computeCountdown } from '../../services/airingCalendarService';
 
 export default function TitleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
+  const isIOS =
+    Platform.OS === 'ios' ||
+    (Platform.OS === 'web' &&
+      typeof navigator !== 'undefined' &&
+      /iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
+  const topNavPadding = Math.max(insets.top, isIOS ? 46 : 10);
   const {
     getTrackingForTitle,
     setWatchStatus,
@@ -306,9 +313,15 @@ export default function TitleDetailScreen() {
           />
 
           {/* Floating Nav */}
-          <SafeAreaView style={styles.floatingNav} edges={['top', 'left', 'right']}>
+          <View style={[styles.floatingNav, { paddingTop: topNavPadding }]}>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/(tabs)');
+                }
+              }}
               style={styles.navIconButton}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -341,7 +354,7 @@ export default function TitleDetailScreen() {
                 <Ionicons name="share-outline" size={18} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
-          </SafeAreaView>
+          </View>
         </View>
 
         {/* Hero Details */}

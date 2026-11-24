@@ -118,6 +118,12 @@ export default function ListsScreen() {
     );
   };
 
+  const isIOS =
+    Platform.OS === 'ios' ||
+    (Platform.OS === 'web' &&
+      typeof navigator !== 'undefined' &&
+      /iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -162,7 +168,7 @@ export default function ListsScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={isIOS ? 'padding' : undefined}
           style={styles.modalOverlay}
         >
           <View style={styles.modalCard}>

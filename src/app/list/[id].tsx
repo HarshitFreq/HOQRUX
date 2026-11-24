@@ -40,7 +40,17 @@ export default function ListDetailScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/lists');
+              }
+            }}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+          >
             <Ionicons name="arrow-back" size={17} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>WATCHLIST</Text>
@@ -82,7 +92,13 @@ export default function ListDetailScreen() {
       {/* 1. Header Bar */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/lists');
+            }
+          }}
           style={styles.backBtn}
           activeOpacity={0.7}
         >
