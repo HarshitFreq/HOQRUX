@@ -8,6 +8,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#050507",
+    "description": "Swiss Brutalist Personal Media Radar & Film Tracker",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.harshit.hoqrux",
@@ -20,6 +21,7 @@
     "android": {
       "package": "com.harshit.hoqrux",
       "versionCode": 1,
+      "permissions": [],
       "adaptiveIcon": {
         "backgroundColor": "#050507",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -34,7 +36,9 @@
       "translucent": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
       "expo-router",

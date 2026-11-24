@@ -1,0 +1,24 @@
+{
+  "short_name": "HOQRUX",
+  "name": "HOQRUX — Swiss Brutalist Media Radar",
+  "description": "Personal Media Radar, Film Tracker & Broadcast Airing Calendar",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "type": "image/png",
+      "sizes": "1024x1024",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#050507",
+  "theme_color": "#050507",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/"
+}

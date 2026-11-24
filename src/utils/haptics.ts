@@ -36,6 +36,12 @@ export async function notificationAsync(
   }
 }
 
+export const haptics = {
+  selection: selectionAsync,
+  impact: impactAsync,
+  notification: notificationAsync,
+};
+
 export const Haptics = {
   selectionAsync,
   impactAsync,

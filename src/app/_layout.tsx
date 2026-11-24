@@ -1,14 +1,45 @@
 import React from 'react';
-import { Stack } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider } from '../context/AuthContext';
 import { TrackingProvider } from '../context/TrackingContext';
 import { colors } from '../theme/colors';
+import { typography } from '../theme/typography';
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <SafeAreaView style={styles.errorContainer}>
+      <View style={styles.errorCard}>
+        <View style={styles.errorBadgeRow}>
+          <View style={styles.errorStatusDot} />
+          <Text style={styles.errorBadgeText}>[CRITICAL_SIGNAL_FAULT]</Text>
+        </View>
+
+        <Text style={styles.errorTitle}>SYSTEM DISRUPTION</Text>
+        <Text style={styles.errorDesc}>
+          An unexpected interruption occurred within the media processing pipeline.
+        </Text>
+
+        <View style={styles.traceBox}>
+          <Text style={styles.traceText} numberOfLines={4}>
+            {error.message || 'Unknown runtime error.'}
+          </Text>
+        </View>
+
+        <TouchableOpacity style={styles.retryBtn} onPress={retry} activeOpacity={0.8}>
+          <Text style={styles.retryBtnText}>REINITIALIZE RADAR</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+}
 
 export default function RootLayout() {
   // Preload Satoshi font family and Asimovian for brand logo
-  useFonts({
+  const [fontsLoaded] = useFonts({
     'Satoshi-Black': require('../../assets/fonts/Satoshi-Black.ttf'),
     'Satoshi-Bold': require('../../assets/fonts/Satoshi-Bold.ttf'),
     'Satoshi-Medium': require('../../assets/fonts/Satoshi-Medium.ttf'),
@@ -16,6 +47,10 @@ export default function RootLayout() {
     'Satoshi-Light': require('../../assets/fonts/Satoshi-Light.ttf'),
     'Asimovian-Regular': require('../../assets/fonts/Asimovian-Regular.ttf'),
   });
+
+  if (!fontsLoaded) {
+    return <View style={{ flex: 1, backgroundColor: colors.void }} />;
+  }
 
   return (
     <AuthProvider>
@@ -50,8 +85,96 @@ export default function RootLayout() {
               animation: 'slide_from_right',
             }}
           />
+          <Stack.Screen
+            name="+not-found"
+            options={{
+              headerShown: false,
+              animation: 'fade',
+            }}
+          />
         </Stack>
       </TrackingProvider>
     </AuthProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  errorContainer: {
+    flex: 1,
+    backgroundColor: colors.void,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: 24,
+    borderRadius: 2,
+  },
+  errorBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  errorStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent,
+    marginRight: 6,
+  },
+  errorBadgeText: {
+    fontFamily: typography.fontBold,
+    fontSize: 9.5,
+    color: colors.accent,
+    letterSpacing: Platform.OS === 'ios' ? 1.5 : 0,
+    includeFontPadding: false,
+  },
+  errorTitle: {
+    fontFamily: typography.fontBlack,
+    fontSize: 20,
+    color: colors.textPrimary,
+    letterSpacing: Platform.OS === 'ios' ? 1.5 : 0,
+    marginBottom: 8,
+  },
+  errorDesc: {
+    fontFamily: typography.fontBody,
+    fontSize: 12,
+    color: colors.textMuted,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  traceBox: {
+    backgroundColor: colors.void,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 12,
+    borderRadius: 2,
+    marginBottom: 20,
+  },
+  traceText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 10,
+    color: colors.accent,
+    lineHeight: 15,
+  },
+  retryBtn: {
+    backgroundColor: colors.textPrimary,
+    paddingVertical: 12,
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryBtnText: {
+    fontFamily: typography.fontBlack,
+    fontSize: 11,
+    color: colors.void,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    includeFontPadding: false,
+  },
+});
+

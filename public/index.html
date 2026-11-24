@@ -3,31 +3,62 @@
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>%WEB_TITLE%</title>
-    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no, viewport-fit=cover" />
+    <title>HOQRUX — Swiss Brutalist Media Radar</title>
+
+    <!-- PWA & Color Metadata -->
+    <meta name="theme-color" content="#050507" />
+    <meta name="description" content="Personal Media Radar, Film Tracker & Broadcast Airing Calendar" />
+
+    <!-- Apple Web App & Home Screen Integration -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="HOQRUX" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph Sharing Embeds -->
+    <meta property="og:title" content="HOQRUX — Swiss Brutalist Media Radar" />
+    <meta property="og:description" content="Personal Media Radar, Film Tracker & Broadcast Airing Calendar" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icon.png" />
+
+    <!-- React Native Web Recommended Reset & Desktop Frame -->
     <style id="expo-reset">
-      /* These styles make the body full-height */
       html,
       body {
         height: 100%;
+        background-color: #050507;
       }
-      /* These styles disable body scrolling if you are using <ScrollView> */
       body {
         overflow: hidden;
       }
-      /* These styles make the root element full-height */
       #root {
         display: flex;
         height: 100%;
         flex: 1;
+        background-color: #000000;
+        justify-content: center;
+      }
+      /* Swiss Brutalist Desktop Centering Frame */
+      @media (min-width: 768px) {
+        #root > div {
+          max-width: 560px;
+          width: 100%;
+          margin: 0 auto;
+          border-left: 1px solid #181820;
+          border-right: 1px solid #181820;
+          box-shadow: 0 0 80px rgba(0, 0, 0, 0.95);
+        }
       }
     </style>
   </head>
 
   <body>
     <!-- Use static rendering with Expo Router to support running without JavaScript. -->
-    <noscript> You need to enable JavaScript to run this app. </noscript>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
   </body>
