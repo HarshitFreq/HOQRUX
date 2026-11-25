@@ -1,7 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { feedback } from '../../utils/feedback';
 import { colors } from '../../theme/colors';
@@ -9,19 +8,9 @@ import { typography } from '../../theme/typography';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const isWeb = Platform.OS === 'web';
 
-  const isIOS =
-    Platform.OS === 'ios' ||
-    (isWeb &&
-      typeof navigator !== 'undefined' &&
-      /iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
-
-  // Calibrated bottom padding:
-  // On iOS devices with home indicator (iPhone X-16), physical bottom inset is 34px.
-  // 36px bottom padding guarantees the text labels sit cleanly above the home indicator.
-  const bottomPadding = isIOS ? Math.max(insets.bottom, 36) : (insets.bottom || 0) + 6;
-  const barHeight = 56 + bottomPadding;
+  const bottomInset = insets.bottom || 0;
+  const barHeight = 50 + bottomInset;
 
   return (
     <Tabs
@@ -40,19 +29,18 @@ export default function TabLayout() {
           fontSize: 10,
           letterSpacing: 0.8,
           includeFontPadding: false,
-          marginBottom: 4,
+          marginBottom: 3,
         },
         tabBarStyle: {
           backgroundColor: colors.void,
           borderTopColor: colors.border,
           borderTopWidth: 1,
           height: barHeight,
-          paddingTop: 6,
-          paddingBottom: bottomPadding,
+          paddingTop: 4,
+          paddingBottom: bottomInset > 0 ? bottomInset : 4,
           elevation: 0,
         },
         tabBarItemStyle: {
-          height: 52,
           justifyContent: 'center',
           alignItems: 'center',
         },

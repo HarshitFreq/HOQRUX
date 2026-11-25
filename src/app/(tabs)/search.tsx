@@ -841,7 +841,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 12px)' as any) : 8,
+    paddingTop: 8,
     paddingBottom: 12,
     backgroundColor: colors.void,
     borderBottomWidth: 1,
@@ -1137,7 +1137,7 @@ const styles = StyleSheet.create({
   searchGridContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 150,
+    paddingBottom: 24,
   },
   searchResultsHeader: {
     flexDirection: 'row',
@@ -1174,7 +1174,7 @@ const styles = StyleSheet.create({
   catalogueGridContent: {
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 150,
+    paddingBottom: 24,
   },
   skeletonGrid: {
     flexDirection: 'row',

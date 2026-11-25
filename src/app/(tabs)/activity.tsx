@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 14px)' as any) : 14,
+    paddingTop: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     marginBottom: 12,
@@ -1113,7 +1113,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 150,
+    paddingBottom: 24,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1436,7 +1436,7 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   settingsScrollContent: {
-    paddingBottom: 150,
+    paddingBottom: 24,
     gap: 12,
   },
   settingsCard: {

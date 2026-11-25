@@ -342,8 +342,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 150,
-    paddingTop: 12,
+    paddingBottom: 24,
+    paddingTop: 8,
   },
   emptySpotlightCard: {
     backgroundColor: colors.surfaceElevated,

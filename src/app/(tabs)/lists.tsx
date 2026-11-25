@@ -230,14 +230,14 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 150,
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 14px)' as any) : 14,
+    paddingTop: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     marginBottom: 14,

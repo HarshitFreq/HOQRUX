@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.void,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
-    paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 8px)' as any) : 4,
+    paddingTop: 4,
     paddingBottom: 10,
     zIndex: 50,
   },
