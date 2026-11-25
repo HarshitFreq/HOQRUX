@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 24,
+    paddingBottom: Platform.OS === 'web' ? 84 : 24,
     paddingTop: 8,
   },
   emptySpotlightCard: {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Text } from 'react-native';
+import { Text, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { feedback } from '../../utils/feedback';
 import { colors } from '../../theme/colors';
@@ -35,6 +35,9 @@ function createTabLabel(label: string) {
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom || 0;
+  const isWeb = Platform.OS === 'web';
+  const webBottomPadding = 'max(env(safe-area-inset-bottom, 0px), 16px)';
+  const webBarHeight = 'calc(52px + max(env(safe-area-inset-bottom, 0px), 16px))';
   // Compact Swiss Brutalist tab bar: 56px content height + safe area bottom inset
   const barHeight = 56 + bottomInset;
 
@@ -55,15 +58,15 @@ export default function TabLayout() {
           backgroundColor: colors.void,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: barHeight,
-          paddingTop: 4,
-          paddingBottom: bottomInset,
+          height: isWeb ? (webBarHeight as any) : barHeight,
+          paddingTop: 5,
+          paddingBottom: isWeb ? (webBottomPadding as any) : bottomInset,
           elevation: 0,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
-          height: 48,
+          height: 46,
         },
       }}
     >
