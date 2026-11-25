@@ -62,23 +62,23 @@ export default function ExploreScreen() {
   const { cacheMediaItem } = useTracking();
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
-
-  const effectiveWidth = useMemo(() => {
-    return isWeb ? Math.min(windowWidth, 1280) : windowWidth;
-  }, [isWeb, windowWidth]);
+  const isDesktop = isWeb && windowWidth >= 768;
 
   const numColumns = useMemo(() => {
-    if (effectiveWidth >= 1200) return 6;
-    if (effectiveWidth >= 900) return 5;
-    if (effectiveWidth >= 600) return 4;
-    return 3;
-  }, [effectiveWidth]);
+    if (!isDesktop) return 3;
+    if (windowWidth >= 1200) return 6;
+    if (windowWidth >= 900) return 5;
+    return 4;
+  }, [isDesktop, windowWidth]);
 
-  // Dynamic responsive poster dimensions
-  const cardWidth = useMemo(
-    () => Math.floor((effectiveWidth - HORIZONTAL_PADDING - GRID_GAP * (numColumns - 1)) / numColumns),
-    [effectiveWidth, numColumns]
-  );
+  // Exact mobile 3-column poster dimensions on phone; dynamic on desktop
+  const cardWidth = useMemo(() => {
+    if (!isDesktop) {
+      return Math.floor((windowWidth - HORIZONTAL_PADDING - GRID_GAP * (3 - 1)) / 3);
+    }
+    const effectiveWidth = Math.min(windowWidth, 1280);
+    return Math.floor((effectiveWidth - HORIZONTAL_PADDING - GRID_GAP * (numColumns - 1)) / numColumns);
+  }, [isDesktop, windowWidth, numColumns]);
 
   // Universal Search State
   const [query, setQuery] = useState('');
@@ -496,7 +496,7 @@ export default function ExploreScreen() {
       {/* 2. RECENT SEARCHES OVERLAY (When search is focused but empty) */}
       {showRecentSearchesOverlay ? (
         <ScrollView
-          style={styles.recentOverlay}
+          style={[styles.recentOverlay, isDesktop && styles.containerDesktop]}
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >
@@ -567,7 +567,7 @@ export default function ExploreScreen() {
         // ========================================================
         // UNIVERSAL SEARCH RESULTS VIEW
         // ========================================================
-        <View style={styles.searchContainer}>
+        <View style={[styles.searchContainer, isDesktop && styles.containerDesktop]}>
           {/* Format Filter Bar during search */}
           <View style={styles.searchFormatBar}>
             <View style={styles.segmentedContainer}>
@@ -605,7 +605,7 @@ export default function ExploreScreen() {
             numColumns={numColumns}
             renderItem={({ item }) => <PosterCard item={item} width={cardWidth} showProgress={false} />}
             columnWrapperStyle={styles.gridRow}
-            contentContainerStyle={styles.searchGridContent}
+            contentContainerStyle={[styles.searchGridContent, isDesktop && styles.gridContentDesktop]}
             showsVerticalScrollIndicator={false}
             onEndReached={handleLoadMoreSearchResults}
             onEndReachedThreshold={0.5}
@@ -672,7 +672,7 @@ export default function ExploreScreen() {
         // ========================================================
         // STREAMLINED GENRE & DISCOVERY CATALOGUE VIEW
         // ========================================================
-        <View style={styles.genreCatalogueContainer}>
+        <View style={[styles.genreCatalogueContainer, isDesktop && styles.containerDesktop]}>
           {/* STREAMLINED FILTER CONTROL: 2 SLEEK ROWS INSTEAD OF 3 CLUTTERED TIERS */}
           <View style={styles.streamlinedFilterSection}>
             {/* Row 1: 4-Way Segmented Format Rail */}
@@ -800,7 +800,7 @@ export default function ExploreScreen() {
                 <PosterCard item={item} width={cardWidth} showProgress={false} />
               )}
               columnWrapperStyle={styles.gridRow}
-              contentContainerStyle={styles.catalogueGridContent}
+              contentContainerStyle={[styles.catalogueGridContent, isDesktop && styles.gridContentDesktop]}
               showsVerticalScrollIndicator={false}
               onEndReached={handleLoadMoreGenre}
               onEndReachedThreshold={0.5}
@@ -855,6 +855,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.void,
   },
   header: {
+    paddingHorizontal: 16,
     paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 12px)' as any) : 8,
     paddingBottom: 12,
     backgroundColor: colors.void,
@@ -862,9 +863,10 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerContent: {
-    paddingHorizontal: 16,
-    maxWidth: 1280,
     width: '100%',
+  },
+  headerContentDesktop: {
+    maxWidth: 1280,
     alignSelf: 'center',
   },
   headerTitleRow: {
@@ -952,9 +954,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.void,
     paddingHorizontal: 16,
     paddingTop: 16,
-    maxWidth: 1280,
-    width: '100%',
-    alignSelf: 'center',
   },
   recentSection: {
     marginBottom: 24,
@@ -1153,6 +1152,8 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     flex: 1,
+  },
+  containerDesktop: {
     maxWidth: 1280,
     width: '100%',
     alignSelf: 'center',
@@ -1163,7 +1164,10 @@ const styles = StyleSheet.create({
   searchGridContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'web' ? 96 : 24,
+    paddingBottom: Platform.OS === 'web' ? 84 : 24,
+  },
+  gridContentDesktop: {
+    paddingBottom: 96,
   },
   searchResultsHeader: {
     flexDirection: 'row',
@@ -1196,14 +1200,11 @@ const styles = StyleSheet.create({
   },
   genreCatalogueContainer: {
     flex: 1,
-    maxWidth: 1280,
-    width: '100%',
-    alignSelf: 'center',
   },
   catalogueGridContent: {
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: Platform.OS === 'web' ? 96 : 24,
+    paddingBottom: Platform.OS === 'web' ? 84 : 24,
   },
   skeletonGrid: {
     flexDirection: 'row',

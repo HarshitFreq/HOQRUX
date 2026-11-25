@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,6 +36,8 @@ import {
 type RadarSegment = 'my' | 'week' | 'today' | 'upcoming';
 
 export default function ReleaseRadarScreen() {
+  const { width: windowWidth } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && windowWidth >= 768;
   const { tracking, resolveMediaItem, setWatchStatus, toggleReminder } = useTracking();
   const [activeSegment, setActiveSegment] = useState<RadarSegment>('my');
   const [radarData, setRadarData] = useState<ReleaseRadarData | null>(null);
@@ -251,7 +254,7 @@ export default function ReleaseRadarScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Top Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isDesktop && styles.desktopCenter]}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => {
@@ -288,7 +291,7 @@ export default function ReleaseRadarScreen() {
       </View>
 
       {/* Screen Title & Subtitle */}
-      <View style={styles.titleBanner}>
+      <View style={[styles.titleBanner, isDesktop && styles.desktopCenter]}>
         <Text style={styles.screenTitle}>RELEASE RADAR</Text>
         <Text style={styles.screenSubtitle}>
           UPCOMING TV EPISODES, AIR DATES & SERIES BROADCASTS
@@ -304,7 +307,7 @@ export default function ReleaseRadarScreen() {
       )}
 
       {/* Segment Selector */}
-      <View style={styles.segmentContainer}>
+      <View style={[styles.segmentContainer, isDesktop && styles.desktopCenter]}>
         <TouchableOpacity
           style={[styles.segmentBtn, activeSegment === 'my' && styles.segmentBtnActive]}
           onPress={() => {
@@ -371,7 +374,7 @@ export default function ReleaseRadarScreen() {
       ) : (
         <ScrollView
           style={styles.scrollList}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, isDesktop && styles.desktopCenter]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -550,9 +553,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 12px)' as any) : 8,
     paddingBottom: 8,
-    maxWidth: 1000,
-    width: '100%',
-    alignSelf: 'center',
   },
   backBtn: {
     flexDirection: 'row',
@@ -641,9 +641,6 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    maxWidth: 1000,
-    width: '100%',
-    alignSelf: 'center',
   },
   screenTitle: {
     fontFamily: typography.fontBlack,
@@ -664,6 +661,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
+  },
+  desktopCenter: {
     maxWidth: 1000,
     width: '100%',
     alignSelf: 'center',
@@ -709,9 +708,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 14,
     paddingBottom: 120,
-    maxWidth: 1000,
-    width: '100%',
-    alignSelf: 'center',
   },
   emptyContainer: {
     alignItems: 'center',

@@ -9,7 +9,7 @@
  */
 
 import React, { memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { feedback } from '../utils/feedback';
@@ -34,6 +34,9 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = memo(({
   selectedCategory,
   onSelectCategory,
 }) => {
+  const { width: windowWidth } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && windowWidth >= 768;
+
   const handleTabPress = (cat: HomeCategory) => {
     feedback.toggle();
     onSelectCategory(cat);
@@ -42,7 +45,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = memo(({
   return (
     <View style={styles.stickyHeaderContainer}>
       {/* Top Branding Bar */}
-      <View style={styles.topRow}>
+      <View style={[styles.topRow, isDesktop && styles.topRowDesktop]}>
         <Text
           style={styles.logoTitle}
           allowFontScaling={true}
@@ -61,7 +64,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = memo(({
       </View>
 
       {/* Swiss Precision Segmented Category Rail */}
-      <View style={styles.tabsRow}>
+      <View style={[styles.tabsRow, isDesktop && styles.tabsRowDesktop]}>
         <View style={styles.segmentedRail}>
           {CATEGORIES.map((tab, idx) => {
             const isActive = selectedCategory === tab.id;
@@ -111,6 +114,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     marginBottom: 10,
+  },
+  topRowDesktop: {
     maxWidth: 1280,
     width: '100%',
     alignSelf: 'center',
@@ -134,6 +139,8 @@ const styles = StyleSheet.create({
   },
   tabsRow: {
     paddingHorizontal: 16,
+  },
+  tabsRowDesktop: {
     maxWidth: 1280,
     width: '100%',
     alignSelf: 'center',

@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -51,6 +52,8 @@ function isAnimeMedia(m?: MediaItem | null): boolean {
 }
 
 export default function NowScreen() {
+  const { width: windowWidth } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && windowWidth >= 768;
   const {
     tracking,
     resolveMediaItem,
@@ -193,7 +196,7 @@ export default function NowScreen() {
 
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, isDesktop && styles.contentContainerDesktop]}
         showsVerticalScrollIndicator={false}
       >
         {/* 1. Continue Watching */}
@@ -342,8 +345,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: Platform.OS === 'web' ? 96 : 24,
+    paddingBottom: Platform.OS === 'web' ? 84 : 24,
     paddingTop: 8,
+  },
+  contentContainerDesktop: {
+    paddingBottom: 96,
     maxWidth: 1280,
     width: '100%',
     alignSelf: 'center',

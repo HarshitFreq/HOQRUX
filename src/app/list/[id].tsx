@@ -27,23 +27,23 @@ export default function ListDetailScreen() {
   const { watchlists, deleteWatchlist, toggleTitleInWatchlist, resolveMediaItem } = useTracking();
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
-
-  const effectiveWidth = useMemo(() => {
-    return isWeb ? Math.min(windowWidth, 1280) : windowWidth;
-  }, [isWeb, windowWidth]);
+  const isDesktop = isWeb && windowWidth >= 768;
 
   const numColumns = useMemo(() => {
-    if (effectiveWidth >= 1200) return 6;
-    if (effectiveWidth >= 900) return 5;
-    if (effectiveWidth >= 600) return 4;
-    return 3;
-  }, [effectiveWidth]);
+    if (!isDesktop) return 3;
+    if (windowWidth >= 1200) return 6;
+    if (windowWidth >= 900) return 5;
+    return 4;
+  }, [isDesktop, windowWidth]);
 
-  // Dynamic responsive width calculated to fill viewport
-  const cardWidth = useMemo(
-    () => Math.floor((effectiveWidth - HORIZONTAL_PADDING - GRID_GAP * (numColumns - 1)) / numColumns),
-    [effectiveWidth, numColumns]
-  );
+  // Exact mobile 3-column width on phone; dynamic on desktop
+  const cardWidth = useMemo(() => {
+    if (!isDesktop) {
+      return Math.floor((windowWidth - HORIZONTAL_PADDING - GRID_GAP * (3 - 1)) / 3);
+    }
+    const effectiveWidth = Math.min(windowWidth, 1280);
+    return Math.floor((effectiveWidth - HORIZONTAL_PADDING - GRID_GAP * (numColumns - 1)) / numColumns);
+  }, [isDesktop, windowWidth, numColumns]);
 
   const list = watchlists.find((l) => l.id === id);
 
@@ -100,7 +100,7 @@ export default function ListDetailScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* 1. Header Bar */}
-      <View style={styles.header}>
+      <View style={[styles.header, isDesktop && styles.headerDesktop]}>
         <TouchableOpacity
           onPress={() => {
             if (router.canGoBack()) {
@@ -139,7 +139,7 @@ export default function ListDetailScreen() {
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         columnWrapperStyle={styles.gridRow}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View style={styles.metaSection}>
@@ -222,6 +222,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.void,
+  },
+  headerDesktop: {
     maxWidth: 1280,
     width: '100%',
     alignSelf: 'center',
@@ -260,6 +262,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 120,
+  },
+  scrollContentDesktop: {
     maxWidth: 1280,
     width: '100%',
     alignSelf: 'center',

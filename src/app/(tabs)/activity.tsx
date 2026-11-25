@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,6 +32,8 @@ import { LegalAboutModal } from '../../components/LegalAboutModal';
 
 export default function ActivityScreen() {
   const { user, isAuthenticated, signOut, deleteAccount } = useAuth();
+  const { width: windowWidth } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && windowWidth >= 768;
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
 
@@ -225,7 +228,7 @@ export default function ActivityScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={styles.container}>
+      <View style={[styles.container, isDesktop && styles.containerDesktop]}>
         {/* Minimal Clean Profile Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>PROFILE</Text>
@@ -878,6 +881,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 16,
+  },
+  containerDesktop: {
     maxWidth: 960,
     width: '100%',
     alignSelf: 'center',
@@ -1125,7 +1130,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Platform.OS === 'web' ? 96 : 24,
+    paddingBottom: Platform.OS === 'web' ? 84 : 24,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1448,7 +1453,7 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   settingsScrollContent: {
-    paddingBottom: Platform.OS === 'web' ? 96 : 24,
+    paddingBottom: Platform.OS === 'web' ? 84 : 24,
     gap: 12,
   },
   settingsCard: {

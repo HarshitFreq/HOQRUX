@@ -42,10 +42,13 @@ export default function ListsScreen() {
   }, [isDesktop, effectiveWidth]);
 
   // 5 mini posters spanning the width of the card symmetrically
-  const miniPosterWidth = useMemo(
-    () => Math.floor((cardCalculatedWidth - 60) / 5),
-    [cardCalculatedWidth]
-  );
+  // Mobile: 32px screen padding + 28px card padding + 32px gaps = 92px
+  const miniPosterWidth = useMemo(() => {
+    if (isDesktop) {
+      return Math.floor((cardCalculatedWidth - 60) / 5);
+    }
+    return Math.floor((windowWidth - 92) / 5);
+  }, [isDesktop, cardCalculatedWidth, windowWidth]);
   const miniPosterHeight = useMemo(
     () => Math.floor(miniPosterWidth * 1.5),
     [miniPosterWidth]
@@ -146,7 +149,10 @@ export default function ListsScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          isDesktop && styles.contentContainerDesktop,
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Minimal Clean Header */}
@@ -165,7 +171,7 @@ export default function ListsScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionLabel}>COLLECTIONS</Text>
         </View>
-        <View style={styles.cardsGrid}>
+        <View style={isDesktop ? styles.cardsGridDesktop : undefined}>
           {watchlists.filter((l) => !l.isCustom).map((l) => renderListCard(l))}
         </View>
 
@@ -175,7 +181,7 @@ export default function ListsScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>CUSTOM LISTS</Text>
             </View>
-            <View style={styles.cardsGrid}>
+            <View style={isDesktop ? styles.cardsGridDesktop : undefined}>
               {watchlists.filter((l) => l.isCustom).map((l) => renderListCard(l))}
             </View>
           </>
@@ -247,12 +253,15 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'web' ? 96 : 24,
+    paddingBottom: Platform.OS === 'web' ? 84 : 24,
+  },
+  contentContainerDesktop: {
+    paddingBottom: 96,
     maxWidth: 1280,
     width: '100%',
     alignSelf: 'center',
   },
-  cardsGrid: {
+  cardsGridDesktop: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 16,

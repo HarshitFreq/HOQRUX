@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -36,6 +37,8 @@ import { computeCountdown } from '../../services/airingCalendarService';
 export default function TitleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && windowWidth >= 768;
   const isIOS =
     Platform.OS === 'ios' ||
     (Platform.OS === 'web' &&
@@ -290,7 +293,7 @@ export default function TitleDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Backdrop Header */}
-        <View style={styles.backdropContainer}>
+        <View style={[styles.backdropContainer, isDesktop && styles.backdropContainerDesktop]}>
           <Image
             source={{ uri: item.backdropPath || item.posterPath }}
             style={styles.backdropImage}
@@ -313,7 +316,7 @@ export default function TitleDetailScreen() {
           />
 
           {/* Floating Nav */}
-          <View style={[styles.floatingNav, { paddingTop: topNavPadding }]}>
+          <View style={[styles.floatingNav, { paddingTop: topNavPadding }, isDesktop && styles.floatingNavDesktop]}>
             <TouchableOpacity
               onPress={() => {
                 if (router.canGoBack()) {
@@ -358,7 +361,7 @@ export default function TitleDetailScreen() {
         </View>
 
         {/* Hero Details */}
-        <View style={styles.heroSection}>
+        <View style={[styles.heroSection, isDesktop && styles.heroSectionDesktop]}>
           <View style={styles.posterAndMetaRow}>
             <Image
               source={{ uri: item.posterPath }}
@@ -1111,9 +1114,12 @@ const styles = StyleSheet.create({
   },
   backdropContainer: {
     width: '100%',
-    height: Platform.OS === 'web' ? 360 : 260,
+    height: 260,
     position: 'relative',
     backgroundColor: '#050507',
+  },
+  backdropContainerDesktop: {
+    height: 360,
   },
   backdropImage: {
     width: '100%',
@@ -1142,6 +1148,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 12px)' as any) : 8,
+  },
+  floatingNavDesktop: {
     maxWidth: 1100,
     width: '100%',
     alignSelf: 'center',
@@ -1167,6 +1175,8 @@ const styles = StyleSheet.create({
   heroSection: {
     paddingHorizontal: 16,
     marginTop: -38,
+  },
+  heroSectionDesktop: {
     maxWidth: 1100,
     width: '100%',
     alignSelf: 'center',
