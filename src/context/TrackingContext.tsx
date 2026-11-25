@@ -187,24 +187,21 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         // Complete bidirectional sync with Supabase cloud
         if (!user.isGuest) {
-          databaseService.fullCloudSync(user).then((res) => {
-            if (res.success && isMounted) {
-              Promise.all([
-                databaseService.getUserTracking(userId),
-                databaseService.getUserWatchlists(userId),
-                databaseService.getUserHistory(userId),
-              ]).then(([mergedTracking, mergedLists, mergedHist]) => {
-                if (isMounted) {
-                  setTracking(mergedTracking);
-                  setWatchlists(mergedLists);
-                  setHistory(mergedHist);
-                }
-              });
-            }
-          });
+          await databaseService.fullCloudSync(user);
+          if (isMounted) {
+            const [mergedTracking, mergedLists, mergedHist] = await Promise.all([
+              databaseService.getUserTracking(userId),
+              databaseService.getUserWatchlists(userId),
+              databaseService.getUserHistory(userId),
+            ]);
+            setTracking(mergedTracking);
+            setWatchlists(mergedLists);
+            setHistory(mergedHist);
+          }
         }
       } catch (err) {
         console.error('Failed to load tracking data:', err);
+      } finally {
         if (isMounted) setLoading(false);
       }
     }
@@ -212,8 +209,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       isMounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, user]);
 
   const getTrackingForTitle = useCallback((titleId: string): UserTitleTracking | undefined => {
     return tracking[titleId];
@@ -342,11 +338,13 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const refreshTracking = useCallback(async () => {
     try {
+      const currentUser = await databaseService.getCurrentUser();
+      const activeId = currentUser?.id || userId;
       const [savedTracking, savedLists, savedHistory, savedMediaCache] = await Promise.all([
-        databaseService.getUserTracking(userId),
-        databaseService.getUserWatchlists(userId),
-        databaseService.getUserHistory(userId),
-        databaseService.getUserMediaCache(userId),
+        databaseService.getUserTracking(activeId),
+        databaseService.getUserWatchlists(activeId),
+        databaseService.getUserHistory(activeId),
+        databaseService.getUserMediaCache(activeId),
       ]);
       setTracking(savedTracking);
       setWatchlists(savedLists);

@@ -31,7 +31,7 @@ export function initSupabase(url: string, anonKey: string): SupabaseClient | nul
         storage: AsyncStorage,
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: typeof window !== 'undefined' && Boolean(window.location),
       },
     });
     return supabaseInstance;

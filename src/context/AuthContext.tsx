@@ -30,9 +30,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isCloudConnected = supabaseService.isConfigured();
 
-  // Load session on startup
+  // Load session on startup and subscribe to auth changes
   useEffect(() => {
     let isMounted = true;
+    const supabase = supabaseService.getClient();
 
     async function loadSession() {
       try {
@@ -40,7 +41,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
 
         // Check if Supabase has an active session
-        const supabase = supabaseService.getClient();
         if (supabase) {
           try {
             const { data } = await supabase.auth.getSession();
@@ -82,8 +82,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     void loadSession();
 
+    let authSubscription: { unsubscribe: () => void } | null = null;
+    if (supabase) {
+      const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!isMounted) return;
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session?.user) {
+          const authUser: UserAccount = {
+            id: session.user.id,
+            email: session.user.email || '',
+            username: session.user.user_metadata?.username || session.user.email?.split('@')[0] || 'User',
+            createdAt: session.user.created_at || new Date().toISOString(),
+            isGuest: false,
+          };
+          setUser(authUser);
+          await databaseService.setCurrentUser(authUser);
+          setCloudSyncStatus('synced');
+          void databaseService.fullCloudSync(authUser);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(GUEST_USER);
+          await databaseService.setCurrentUser(GUEST_USER);
+          setCloudSyncStatus('local_only');
+        }
+      });
+      authSubscription = listener.subscription;
+    }
+
     return () => {
       isMounted = false;
+      authSubscription?.unsubscribe();
     };
   }, [isCloudConnected]);
 
@@ -106,6 +132,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           password,
         });
 
+        if (error) {
+          console.warn('[Auth] Supabase signIn error:', error.message, error.status);
+          const errMsg = (error.message || '').toLowerCase();
+          if (errMsg.includes('email not confirmed') || (error as any).code === 'email_not_confirmed') {
+            setLoading(false);
+            setCloudSyncStatus('local_only');
+            return {
+              success: false,
+              error: 'Email address not confirmed. Please check your inbox and verify your email before signing in.',
+            };
+          }
+          if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid credentials')) {
+            const credsRaw = await AsyncStorage.getItem(LOCAL_CREDS_KEY);
+            const creds = credsRaw ? JSON.parse(credsRaw) : {};
+            if (!creds[cleanEmail]) {
+              setLoading(false);
+              setCloudSyncStatus('local_only');
+              return {
+                success: false,
+                error: 'Invalid email or password. Please verify your credentials or create an account.',
+              };
+            }
+          }
+        }
+
         if (!error && data?.user) {
           const loggedInUser: UserAccount = {
             id: data.user.id,
@@ -116,14 +167,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           setUser(loggedInUser);
           await databaseService.setCurrentUser(loggedInUser);
-          await databaseService.migrateGuestDataToUser(loggedInUser.id);
+
+          // PULL all cloud database records into local storage BEFORE completing sign-in!
+          try {
+            await databaseService.fullCloudSync(loggedInUser);
+          } catch (syncErr) {
+            console.warn('[Auth] fullCloudSync warning on signIn:', syncErr);
+          }
+
           setCloudSyncStatus('synced');
           setLoading(false);
-          void databaseService.fullCloudSync(loggedInUser);
           return { success: true };
         }
-      } catch (err) {
-        console.warn('[Auth] Supabase signIn exception, falling back to local:', err);
+      } catch (err: any) {
+        console.warn('[Auth] Supabase signIn exception, checking local fallback:', err);
       }
     }
 
@@ -148,39 +205,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(localUser);
         await databaseService.setCurrentUser(localUser);
-        await databaseService.migrateGuestDataToUser(localUser.id);
+        if (isCloudConnected) {
+          try {
+            await databaseService.fullCloudSync(localUser);
+          } catch (syncErr) {
+            console.warn('[Auth] fullCloudSync warning on local login:', syncErr);
+          }
+        }
         setCloudSyncStatus(isCloudConnected ? 'synced' : 'local_only');
         setLoading(false);
-        if (isCloudConnected) {
-          void databaseService.fullCloudSync(localUser);
-        }
         return { success: true };
       }
 
-      // If user doesn't exist locally, offer auto-signup
-      const newUserId = `usr_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
-      const newUser: UserAccount = {
-        id: newUserId,
-        email: cleanEmail,
-        username: cleanEmail.split('@')[0].toUpperCase(),
-        createdAt: new Date().toISOString(),
-        isGuest: false,
-      };
-
-      creds[cleanEmail] = {
-        ...newUser,
-        pass: password,
-      };
-      await AsyncStorage.setItem(LOCAL_CREDS_KEY, JSON.stringify(creds));
-      setUser(newUser);
-      await databaseService.setCurrentUser(newUser);
-      await databaseService.migrateGuestDataToUser(newUser.id);
-      setCloudSyncStatus(isCloudConnected ? 'synced' : 'local_only');
       setLoading(false);
-      if (isCloudConnected) {
-        void databaseService.fullCloudSync(newUser);
-      }
-      return { success: true };
+      return { success: false, error: 'Account not found. Please check your credentials or create an account.' };
     } catch (e: any) {
       setLoading(false);
       return { success: false, error: e.message || 'Sign in failed. Check your password.' };
@@ -214,7 +252,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
         });
 
-        if (!error && data?.user) {
+        if (error) {
+          console.warn('[Auth] Supabase signUp error:', error.message);
+          setLoading(false);
+          setCloudSyncStatus('local_only');
+          return { success: false, error: error.message };
+        }
+
+        if (data?.user) {
+          // Check if user already exists (identities empty)
+          if (data.user.identities && data.user.identities.length === 0) {
+            setLoading(false);
+            return {
+              success: false,
+              error: 'An account with this email already exists. Please sign in instead.',
+            };
+          }
+
+          // If session is null, email confirmation is enabled in Supabase
+          if (!data.session) {
+            setLoading(false);
+            return {
+              success: false,
+              error: 'Verification email sent! Please check your inbox and confirm your email before signing in.',
+            };
+          }
+
           const newUser: UserAccount = {
             id: data.user.id,
             email: data.user.email || cleanEmail,
@@ -227,11 +290,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await databaseService.migrateGuestDataToUser(newUser.id);
           setCloudSyncStatus('synced');
           setLoading(false);
-          void databaseService.fullCloudSync(newUser);
+          try {
+            await databaseService.fullCloudSync(newUser);
+          } catch (syncErr) {
+            console.warn('[Auth] fullCloudSync warning on signUp:', syncErr);
+          }
           return { success: true };
         }
-      } catch (err) {
-        console.warn('[Auth] Supabase signup exception, falling back to local registration:', err);
+      } catch (err: any) {
+        console.warn('[Auth] Supabase signup exception:', err);
       }
     }
 
@@ -240,6 +307,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const credsRaw = await AsyncStorage.getItem(LOCAL_CREDS_KEY);
       const creds: Record<string, { id: string; email: string; username: string; pass: string; createdAt: string }> =
         credsRaw ? JSON.parse(credsRaw) : {};
+
+      if (creds[cleanEmail]) {
+        setLoading(false);
+        return { success: false, error: 'An account with this email already exists locally. Please sign in.' };
+      }
 
       const newUserId = `usr_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
       const newUser: UserAccount = {
@@ -350,9 +422,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             setUser(authUser);
             await databaseService.setCurrentUser(authUser);
-            await databaseService.migrateGuestDataToUser(authUser.id);
             setCloudSyncStatus('synced');
-            void databaseService.fullCloudSync(authUser);
+            await databaseService.fullCloudSync(authUser);
             return true;
           }
         } catch {

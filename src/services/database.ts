@@ -458,7 +458,7 @@ export const databaseService = {
     history?: ViewingHistoryEntry[];
   } | null> {
     const supabase = supabaseService.getClient();
-    if (!supabase || !userId || userId === 'guest' || isCloudSchemaCompatible === false) {
+    if (!supabase || !userId || userId === 'guest') {
       return null;
     }
 
@@ -480,13 +480,6 @@ export const databaseService = {
           .eq('user_id', cloudUserId)
           .order('watched_at', { ascending: false }),
       ]);
-
-      const isUuidError = (err: any) => err?.code === '22P02' || (err?.message || '').includes('uuid');
-      if (isUuidError(trackingRes.error) || isUuidError(listsRes.error) || isUuidError(historyRes.error)) {
-        isCloudSchemaCompatible = false;
-        console.warn('[Cloud Database] Supabase table schema uses UUID user_id. Please execute schema.sql in Supabase SQL editor for cloud sync.');
-        return null;
-      }
 
       if (trackingRes.error) {
         console.warn('[Cloud Database] tracking query error:', trackingRes.error);
@@ -521,16 +514,37 @@ export const databaseService = {
       }
 
       if (listsRes.data && listsRes.data.length > 0) {
-        const lists = listsRes.data.map((r) => (r.data || r) as Watchlist).filter(Boolean);
+        const lists = listsRes.data.map((r) => {
+          if (r.data && typeof r.data === 'object') {
+            return {
+              ...r.data,
+              id: r.data.id || r.list_id,
+              name: r.data.name || r.name,
+              isCustom: r.data.isCustom !== undefined ? r.data.isCustom : r.is_custom,
+              accentColor: r.data.accentColor || r.accent_color,
+              updatedAt: r.updated_at || r.data.updatedAt,
+            } as Watchlist;
+          }
+          return {
+            id: r.list_id,
+            name: r.name || 'Watchlist',
+            description: '',
+            titleIds: [],
+            isCustom: Boolean(r.is_custom),
+            accentColor: r.accent_color,
+            createdAt: r.updated_at || new Date().toISOString(),
+            updatedAt: r.updated_at || new Date().toISOString(),
+          } as Watchlist;
+        }).filter(Boolean);
         result.watchlists = lists;
       }
 
       if (historyRes.data && historyRes.data.length > 0) {
         const historyEntries = historyRes.data.map((r) => ({
           ...(r.data || {}),
-          id: r.history_id,
-          titleId: r.title_id,
-          watchedAt: r.watched_at,
+          id: r.history_id || r.data?.id,
+          titleId: r.title_id || r.data?.titleId,
+          watchedAt: r.watched_at || r.data?.watchedAt || new Date().toISOString(),
         })) as ViewingHistoryEntry[];
         result.history = historyEntries;
       }
@@ -795,7 +809,7 @@ export const databaseService = {
         updated_at: new Date().toISOString(),
       };
 
-      const [trackingRes, listsRes, historyRes, profileRes] = await Promise.all([
+      const [trackingRes, listsRes, historyRes] = await Promise.all([
         trackingRows.length > 0
           ? supabase.from('user_tracking').upsert(trackingRows)
           : Promise.resolve({ error: null }),
@@ -805,15 +819,18 @@ export const databaseService = {
         historyRows.length > 0
           ? supabase.from('user_history').upsert(historyRows)
           : Promise.resolve({ error: null }),
-        supabase.from('profiles').upsert(profileRow),
       ]);
 
-      const error = trackingRes.error || listsRes.error || historyRes.error || profileRes.error;
+      // Best effort profile upsert
+      try {
+        await supabase.from('profiles').upsert(profileRow);
+      } catch {
+        // Non-blocking
+      }
+
+      const error = trackingRes.error || listsRes.error || historyRes.error;
       if (error) {
-        if (error.code === '22P02' || error.message?.includes('uuid')) {
-          isCloudSchemaCompatible = false;
-        }
-        console.warn('[Cloud Database] Bulk upsert error:', error);
+        console.warn('[Cloud Database] Bulk upsert warning:', error);
         return { success: false, error: formatDbError(error) };
       }
 
@@ -852,37 +869,16 @@ export const databaseService = {
       let activeWatchlists = await this.getUserWatchlists(user.id);
       let activeHistory = await this.getUserHistory(user.id);
 
-      // Guard: If registered user account has 0 items, check if guest has items to migrate
-      if (Object.keys(activeTracking).length === 0) {
-        const guestTracking = await this.getUserTracking('guest');
-        if (Object.keys(guestTracking).length > 0) {
-          activeTracking = { ...guestTracking };
-          await this.saveUserTracking(user.id, activeTracking);
-        }
-      }
-
-      const hasListItems = activeWatchlists.some((l) => l.titleIds && l.titleIds.length > 0);
-      if (!hasListItems) {
-        const guestLists = await this.getUserWatchlists('guest');
-        if (guestLists.some((l) => l.titleIds && l.titleIds.length > 0)) {
-          activeWatchlists = guestLists;
-          await this.saveUserWatchlists(user.id, activeWatchlists);
-        }
-      }
-
-      if (activeHistory.length === 0) {
-        const guestHistory = await this.getUserHistory('guest');
-        if (guestHistory.length > 0) {
-          activeHistory = guestHistory;
-          await this.saveUserHistory(user.id, activeHistory);
-        }
-      }
-
-      // 2. Fetch remote records from Supabase
+      // 2. Fetch remote records from Supabase (PULL FIRST)
       const remote = await this.syncFromCloud(user.id);
 
-      // 3. Merge remote into local
+      let pulledTrackingCount = 0;
+      let pulledWatchlistsCount = 0;
+      let pulledHistoryCount = 0;
+
+      // 3. Merge remote into local immediately
       if (remote?.tracking && Object.keys(remote.tracking).length > 0) {
+        pulledTrackingCount = Object.keys(remote.tracking).length;
         for (const [tId, rTrack] of Object.entries(remote.tracking)) {
           if (!activeTracking[tId]) {
             activeTracking[tId] = rTrack;
@@ -898,20 +894,27 @@ export const databaseService = {
       }
 
       if (remote?.watchlists && remote.watchlists.length > 0) {
+        pulledWatchlistsCount = remote.watchlists.length;
         const localListMap = new Map(activeWatchlists.map((l) => [l.id, l]));
         for (const rList of remote.watchlists) {
           if (!localListMap.has(rList.id)) {
             activeWatchlists.push(rList);
+            localListMap.set(rList.id, rList);
           } else {
             const localL = localListMap.get(rList.id)!;
             const mergedIds = Array.from(new Set([...(localL.titleIds || []), ...(rList.titleIds || [])]));
+            localL.name = rList.name || localL.name;
+            localL.description = rList.description || localL.description;
+            localL.accentColor = rList.accentColor || localL.accentColor;
             localL.titleIds = mergedIds;
+            localL.updatedAt = rList.updatedAt || localL.updatedAt;
           }
         }
         await this.saveUserWatchlists(user.id, activeWatchlists);
       }
 
       if (remote?.history && remote.history.length > 0) {
+        pulledHistoryCount = remote.history.length;
         const existingIds = new Set(activeHistory.map((h) => h.id));
         for (const rHist of remote.history) {
           if (!existingIds.has(rHist.id)) {
@@ -922,8 +925,32 @@ export const databaseService = {
         await this.saveUserHistory(user.id, activeHistory);
       }
 
-      // 4. Push merged complete dataset to Supabase PostgreSQL
-      const pushRes = await this.pushAllToCloud(
+      // Only migrate guest data if user has 0 cloud data AND 0 local data
+      const hasAnyCloudData = pulledTrackingCount > 0 || pulledWatchlistsCount > 0 || pulledHistoryCount > 0;
+      if (!hasAnyCloudData && Object.keys(activeTracking).length === 0) {
+        const guestTracking = await this.getUserTracking('guest');
+        if (Object.keys(guestTracking).length > 0) {
+          activeTracking = { ...guestTracking };
+          await this.saveUserTracking(user.id, activeTracking);
+        }
+      }
+      if (!hasAnyCloudData && !activeWatchlists.some((l) => l.titleIds && l.titleIds.length > 0)) {
+        const guestLists = await this.getUserWatchlists('guest');
+        if (guestLists.some((l) => l.titleIds && l.titleIds.length > 0)) {
+          activeWatchlists = guestLists;
+          await this.saveUserWatchlists(user.id, activeWatchlists);
+        }
+      }
+      if (!hasAnyCloudData && activeHistory.length === 0) {
+        const guestHistory = await this.getUserHistory('guest');
+        if (guestHistory.length > 0) {
+          activeHistory = guestHistory;
+          await this.saveUserHistory(user.id, activeHistory);
+        }
+      }
+
+      // 4. Background Push local state to Supabase (never block or fail the pull)
+      this.pushAllToCloud(
         user.id,
         activeTracking,
         activeWatchlists,
@@ -932,11 +959,9 @@ export const databaseService = {
           email: user.email,
           username: user.username,
         }
-      );
-
-      if (!pushRes.success) {
-        return { success: false, error: pushRes.error };
-      }
+      ).catch((err) => {
+        console.warn('[Cloud Database] Background push error after sync:', err);
+      });
 
       return {
         success: true,
