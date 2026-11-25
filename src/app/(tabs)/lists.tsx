@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -38,10 +38,15 @@ export default function ListsScreen() {
     [miniPosterWidth]
   );
 
-  // Auto-refresh when screen gains focus
+  // Auto-refresh when screen gains focus (throttled to at most once per 15s)
+  const lastFocusTimeRef = useRef(0);
   useFocusEffect(
     useCallback(() => {
-      refreshTracking();
+      const now = Date.now();
+      if (now - lastFocusTimeRef.current > 15000) {
+        lastFocusTimeRef.current = now;
+        refreshTracking();
+      }
     }, [refreshTracking])
   );
 

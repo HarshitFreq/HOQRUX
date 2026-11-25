@@ -30,8 +30,8 @@
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/icon.png" />
 
-    <!-- Precision Swiss Brutalist PWA Reset & Dynamic Viewport Frame -->
-    <style id="hoqrux-pwa-reset">
+    <!-- React Native Web Recommended Reset & Desktop Frame -->
+    <style id="expo-reset">
       :root {
         --sat: env(safe-area-inset-top, 0px);
         --sar: env(safe-area-inset-right, 0px);
@@ -39,53 +39,33 @@
         --sal: env(safe-area-inset-left, 0px);
       }
 
-      *,
-      *::before,
-      *::after {
+      * {
         box-sizing: border-box;
         -webkit-tap-highlight-color: transparent;
       }
 
-      /* Lock HTML and BODY to exact dynamic viewport */
-      html {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        background-color: #050507;
-        overflow: hidden;
-        overscroll-behavior: none;
-      }
-
+      html,
       body {
-        width: 100%;
         height: 100%;
-        height: -webkit-fill-available;
-        height: 100dvh;
         margin: 0;
         padding: 0;
         background-color: #050507;
-        overflow: hidden;
-        overscroll-behavior: none;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         -webkit-touch-callout: none;
       }
 
-      /* Fixed app viewport frame pins #root exactly to the visible screen above Safari toolbar */
+      body {
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+
       #root {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
-        height: -webkit-fill-available;
-        height: 100dvh;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        height: 100%;
+        width: 100%;
+        flex: 1;
         background-color: #050507;
       }
 
@@ -93,9 +73,8 @@
         display: flex;
         flex-direction: column;
         flex: 1;
-        width: 100%;
         height: 100%;
-        overflow: hidden;
+        width: 100%;
       }
 
       /* Swiss Brutalist Desktop Centering Frame for Mouse / Laptop screens */

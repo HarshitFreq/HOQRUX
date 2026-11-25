@@ -5,11 +5,16 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { enableScreens } from 'react-native-screens';
 import { AuthProvider } from '../context/AuthContext';
 import { TrackingProvider } from '../context/TrackingContext';
 import { initNotifications } from '../services/notificationService';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
+
+// Enable react-native-screens across all platforms (including web)
+// This ensures inactive tab screens acquire display: none and do not steal touches or freeze the DOM
+enableScreens(true);
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return (

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -50,12 +50,17 @@ export default function ActivityScreen() {
   const [autoSyncActive, setAutoSyncActive] = useState(true);
   const [hapticsActive, setHapticsActive] = useState(feedback.isHapticsEnabled());
 
+  const lastFocusTimeRef = useRef(0);
   useFocusEffect(
     useCallback(() => {
-      refreshTracking();
-      isNotificationsEnabled().then(setNotificationsActive);
-      isAutoSyncQueueEnabled().then(setAutoSyncActive);
-      setHapticsActive(feedback.isHapticsEnabled());
+      const now = Date.now();
+      if (now - lastFocusTimeRef.current > 15000) {
+        lastFocusTimeRef.current = now;
+        refreshTracking();
+        isNotificationsEnabled().then(setNotificationsActive);
+        isAutoSyncQueueEnabled().then(setAutoSyncActive);
+        setHapticsActive(feedback.isHapticsEnabled());
+      }
     }, [refreshTracking])
   );
 

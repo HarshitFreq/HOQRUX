@@ -85,7 +85,7 @@ export function computeCountdown(airDateStr?: string): {
 
 class AiringCalendarService {
   private memoryCache: ReleaseRadarData | null = null;
-  private isFetching = false;
+  private pendingPromise: Promise<ReleaseRadarData> | null = null;
 
   async getReleaseRadar(trackedShowIds: string[] = [], forceRefresh = false): Promise<ReleaseRadarData> {
     const now = Date.now();
@@ -111,30 +111,36 @@ class AiringCalendarService {
       }
     }
 
-    // 3. Fetch fresh data from TMDb
-    if (this.isFetching && this.memoryCache) {
-      return this.enrichWithTracked(this.memoryCache, trackedShowIds);
+    // 3. If a fetch is already in-flight, await the exact same promise to deduplicate network requests
+    if (this.pendingPromise) {
+      const result = await this.pendingPromise;
+      return this.enrichWithTracked(result, trackedShowIds);
     }
 
-    this.isFetching = true;
-    try {
-      const freshData = await this.buildFreshRadarData(trackedShowIds);
-      this.memoryCache = freshData;
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(freshData)).catch(() => {});
-      return freshData;
-    } catch (e) {
-      console.warn('Failed to build fresh release radar:', e);
-      if (this.memoryCache) return this.enrichWithTracked(this.memoryCache, trackedShowIds);
-      return {
-        myRadar: [],
-        today: [],
-        thisWeek: [],
-        upcoming: [],
-        lastUpdated: now,
-      };
-    } finally {
-      this.isFetching = false;
-    }
+    // 4. Fetch fresh data from TMDb
+    this.pendingPromise = (async () => {
+      try {
+        const freshData = await this.buildFreshRadarData(trackedShowIds);
+        this.memoryCache = freshData;
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(freshData)).catch(() => {});
+        return freshData;
+      } catch (e) {
+        console.warn('Failed to build fresh release radar:', e);
+        if (this.memoryCache) return this.enrichWithTracked(this.memoryCache, trackedShowIds);
+        return {
+          myRadar: [],
+          today: [],
+          thisWeek: [],
+          upcoming: [],
+          lastUpdated: now,
+        };
+      } finally {
+        this.pendingPromise = null;
+      }
+    })();
+
+    const finalData = await this.pendingPromise;
+    return this.enrichWithTracked(finalData, trackedShowIds);
   }
 
   private enrichWithTracked(data: ReleaseRadarData, trackedShowIds: string[]): ReleaseRadarData {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -61,13 +61,17 @@ export default function NowScreen() {
   const [selectedCategory, setSelectedCategory] = useState<HomeCategory>('all');
   const [radarEpisodes, setRadarEpisodes] = useState<AiringEpisode[]>([]);
 
-  const trackedTvIds = useMemo(() => {
-    return Object.keys(tracking || {}).filter((id) => !id.startsWith('movie-'));
+  const trackedTvIdsKey = useMemo(() => {
+    return Object.keys(tracking || {})
+      .filter((id) => !id.startsWith('movie-'))
+      .sort()
+      .join(',');
   }, [tracking]);
 
   const loadRadarEpisodes = useCallback(async () => {
     try {
-      const data = await airingCalendarService.getReleaseRadar(trackedTvIds);
+      const ids = trackedTvIdsKey ? trackedTvIdsKey.split(',') : [];
+      const data = await airingCalendarService.getReleaseRadar(ids);
       if (data.myRadar.length > 0) {
         setRadarEpisodes(data.myRadar.slice(0, 3));
       } else if (data.thisWeek.length > 0) {
@@ -78,13 +82,18 @@ export default function NowScreen() {
     } catch {
       // Ignore
     }
-  }, [trackedTvIds]);
+  }, [trackedTvIdsKey]);
 
-  // Trigger live refresh whenever the NOW tab is focused
+  // Throttled live refresh on tab focus (at most once every 15 seconds to prevent render & network thrashing)
+  const lastFocusTimeRef = useRef(0);
   useFocusEffect(
     useCallback(() => {
-      refreshTracking();
-      loadRadarEpisodes();
+      const now = Date.now();
+      if (now - lastFocusTimeRef.current > 15000) {
+        lastFocusTimeRef.current = now;
+        refreshTracking();
+        loadRadarEpisodes();
+      }
     }, [refreshTracking, loadRadarEpisodes])
   );
 
