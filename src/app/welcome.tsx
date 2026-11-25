@@ -1,14 +1,11 @@
 /**
- * Hoqrux Landing & PWA Installation Guide Screen
+ * Hoqrux Landing & PWA Installation Guide
  * 
- * Swiss Brutalist showcase detailing:
- * - Brand proposition: Personal Media Radar, Episode Logbook & Airing Calendar
- * - Interactive, platform-adaptive PWA install guide (iOS Safari, Android Chrome, Desktop)
- * - PWA superpowers: Full-screen standalone execution, offline cache, instant launch
- * - Direct "Launch Radar" primary actions
+ * Minimalist, cinephile-authored introduction and platform-adaptive installation guide.
+ * Pure Swiss typography, zero algorithmic clutter, no AI buzzwords.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -44,22 +41,30 @@ export default function WelcomeScreen() {
   const isDesktop = isWeb && windowWidth >= 768;
   const initialPlatform = useMemo(() => detectUserPlatform(), []);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformTab>(initialPlatform);
+  const scrollRef = useRef<any>(null);
+  const installSectionY = useRef<number>(0);
 
   const handleLaunchApp = () => {
     feedback.tap();
     router.replace('/(tabs)');
   };
 
+  const scrollToInstall = () => {
+    feedback.tap();
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ y: installSectionY.current - 20, animated: true });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
       {/* 1. Header Bar */}
       <View style={styles.header}>
-        <View style={styles.headerInner}>
-          <View style={styles.brandRow}>
+        <View style={[styles.headerInner, isDesktop && styles.headerInnerDesktop]}>
+          <View style={styles.brandGroup}>
             <Text style={styles.brandLogo}>HOQRUX</Text>
-            <View style={styles.brandBadge}>
-              <Text style={styles.brandBadgeText}>PWA // 2.0</Text>
-            </View>
+            <View style={styles.brandDivider} />
+            <Text style={styles.brandSubtitle}>FILM & TV LEDGER</Text>
           </View>
 
           <TouchableOpacity
@@ -67,110 +72,136 @@ export default function WelcomeScreen() {
             onPress={handleLaunchApp}
             activeOpacity={0.8}
           >
-            <Text style={styles.launchBtnTopText}>LAUNCH RADAR →</Text>
+            <Text style={styles.launchBtnTopText}>ENTER APP →</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.contentContainer}>
-          {/* 2. Hero Section */}
+        <View style={[styles.contentContainer, isDesktop && styles.contentContainerDesktop]}>
+          {/* 2. Hero / Cinephile Manifesto */}
           <View style={styles.heroSection}>
-            <View style={styles.overlineTag}>
-              <View style={styles.livePulseDot} />
-              <Text style={styles.overlineText}>CINEMATIC MEDIA RADAR & REEL LOGBOOK</Text>
+            <View style={styles.leadTag}>
+              <View style={styles.redDot} />
+              <Text style={styles.leadTagText}>A NOTE ON WHY THIS EXISTS</Text>
             </View>
 
-            <Text style={styles.heroTitle}>
-              TRACK FILMS.{'\n'}LOG EPISODES.{'\n'}ZERO NOISE.
+            <Text style={styles.heroTitle}>Cinema without the noise.</Text>
+
+            <Text style={styles.manifestoParagraph}>
+              Most film apps today want you to perform. They push algorithmic feeds, five-star hot takes, endless notifications, and ads for things you will never watch.
             </Text>
 
-            <Text style={styles.heroSubtitle}>
-              Hoqrux is a progressive media radar designed for speed and clarity.
-              Follow weekly TV broadcast schedules, track your personal cinema catalog, and log seasons with single-tap precision.
+            <Text style={styles.manifestoParagraph}>
+              We built Hoqrux because we wanted something quieter: a fast, pitch-black notebook for what you have seen, what you are waiting for, and what is airing tonight.
             </Text>
 
-            {/* Quick CTAs */}
+            <View style={styles.manifestoBulletList}>
+              <View style={styles.bulletRow}>
+                <Text style={styles.bulletDash}>—</Text>
+                <Text style={styles.bulletText}>
+                  <Text style={styles.bulletEmphasis}>One-tap logging:</Text> Mark an episode finished the second the credits roll.
+                </Text>
+              </View>
+              <View style={styles.bulletRow}>
+                <Text style={styles.bulletDash}>—</Text>
+                <Text style={styles.bulletText}>
+                  <Text style={styles.bulletEmphasis}>Broadcast radar:</Text> Know when your favorite series actually returns, with countdowns and zero spoilers.
+                </Text>
+              </View>
+              <View style={styles.bulletRow}>
+                <Text style={styles.bulletDash}>—</Text>
+                <Text style={styles.bulletText}>
+                  <Text style={styles.bulletEmphasis}>Private reflections:</Text> Keep personal notes when a film stays with you overnight. No public feeds, no clout chasing.
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.manifestoSignoff}>
+              No ads. No follower counts. No social pressure. Just cinema and your time.
+            </Text>
+
+            {/* Quick Actions */}
             <View style={styles.heroCtasRow}>
               <TouchableOpacity
                 style={styles.primaryCta}
                 onPress={handleLaunchApp}
                 activeOpacity={0.85}
               >
-                <Ionicons name="play" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.primaryCtaText}>OPEN WEB APP</Text>
+                <Ionicons name="play" size={13} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.primaryCtaText}>LAUNCH HOQRUX</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.secondaryCta}
-                onPress={() => {
-                  feedback.tap();
-                  // Pre-select user platform and guide is right below
-                }}
+                onPress={scrollToInstall}
                 activeOpacity={0.8}
               >
                 <Ionicons name="download-outline" size={14} color={colors.textPrimary} style={{ marginRight: 6 }} />
-                <Text style={styles.secondaryCtaText}>INSTALL AS APP</Text>
+                <Text style={styles.secondaryCtaText}>HOW TO INSTALL</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* 3. Core Pillars Feature Grid */}
-          <View style={styles.featuresSection}>
+          {/* 3. Three Quiet Tenets */}
+          <View style={styles.tenetsSection}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionIndex}>[ 01 // CAPABILITIES ]</Text>
-              <Text style={styles.sectionHeaderTitle}>DESIGNED FOR THE PURIST</Text>
+              <Text style={styles.sectionTag}>[ 01 // HOW IT WORKS ]</Text>
+              <Text style={styles.sectionHeaderTitle}>BUILT FOR THE SCREEN, NOT THE FEED</Text>
             </View>
 
-            <View style={[styles.featuresGrid, isDesktop && styles.featuresGridDesktop]}>
-              {/* Feature 1 */}
-              <View style={[styles.featureCard, isDesktop && styles.featureCardDesktop]}>
-                <View style={styles.featureIconBox}>
-                  <Ionicons name="radio-outline" size={18} color={colors.accent} />
+            <View style={[styles.tenetsGrid, isDesktop && styles.tenetsGridDesktop]}>
+              <View style={[styles.tenetItem, isDesktop && styles.tenetItemDesktop]}>
+                <View style={styles.tenetHeader}>
+                  <Text style={styles.tenetIndex}>01</Text>
+                  <Text style={styles.tenetTitle}>RELEASE RADAR</Text>
                 </View>
-                <Text style={styles.featureTitle}>RELEASE RADAR</Text>
-                <Text style={styles.featureDesc}>
-                  Live airing calendar tracking upcoming broadcasts, series premieres, and episode drops with real-time countdown badges.
+                <Text style={styles.tenetDesc}>
+                  A live air schedule for television series. Follow upcoming broadcast dates, season drops, and network schedules with accurate countdowns — no spoiler summaries.
                 </Text>
               </View>
 
-              {/* Feature 2 */}
-              <View style={[styles.featureCard, isDesktop && styles.featureCardDesktop]}>
-                <View style={styles.featureIconBox}>
-                  <Ionicons name="film-outline" size={18} color={colors.accent} />
+              <View style={[styles.tenetItem, isDesktop && styles.tenetItemDesktop]}>
+                <View style={styles.tenetHeader}>
+                  <Text style={styles.tenetIndex}>02</Text>
+                  <Text style={styles.tenetTitle}>TACTICAL LOGBOOK</Text>
                 </View>
-                <Text style={styles.featureTitle}>TACTICAL REEL LOGBOOK</Text>
-                <Text style={styles.featureDesc}>
-                  One-tap episode progress logging with season completion ratios, private reflections, and historical watch-time analytics.
+                <Text style={styles.tenetDesc}>
+                  Track seasons and film runs with single-tap precision. Rate honestly, maintain custom lists, and write reflections that remain strictly private.
                 </Text>
               </View>
 
-              {/* Feature 3 */}
-              <View style={[styles.featureCard, isDesktop && styles.featureCardDesktop]}>
-                <View style={styles.featureIconBox}>
-                  <Ionicons name="search-outline" size={18} color={colors.accent} />
+              <View style={[styles.tenetItem, isDesktop && styles.tenetItemDesktop]}>
+                <View style={styles.tenetHeader}>
+                  <Text style={styles.tenetIndex}>03</Text>
+                  <Text style={styles.tenetTitle}>UNBIASED DATA</Text>
                 </View>
-                <Text style={styles.featureTitle}>OMNI-EXPLORE & CATALOGUE</Text>
-                <Text style={styles.featureDesc}>
-                  High-speed search across 20+ genres with TMDB and IMDb scores, transparent title logos, and instant streaming provider availability.
+                <Text style={styles.tenetDesc}>
+                  Side-by-side TMDB and IMDb scores, original non-English titles, transparent title artwork, and instant availability across streaming platforms.
                 </Text>
               </View>
             </View>
           </View>
 
-          {/* 4. PWA Installation Guide */}
-          <View style={styles.installSection}>
+          {/* 4. Progressive Web App Installation Guide */}
+          <View
+            style={styles.installSection}
+            onLayout={(e) => {
+              installSectionY.current = e.nativeEvent.layout.y;
+            }}
+          >
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionIndex}>[ 02 // INSTALLATION ]</Text>
-              <Text style={styles.sectionHeaderTitle}>ADD TO HOME SCREEN</Text>
+              <Text style={styles.sectionTag}>[ 02 // INSTALLATION ]</Text>
+              <Text style={styles.sectionHeaderTitle}>ADD TO YOUR HOME SCREEN</Text>
             </View>
 
             <Text style={styles.installLead}>
-              Hoqrux is built as a Progressive Web App (PWA). Installing it adds an icon to your home screen or dock that runs full-screen with zero browser address bars and instant launch speeds.
+              Hoqrux is an independent Progressive Web App (PWA). You don&apos;t need to download 150MB from an app store. Add it directly from your browser to run edge-to-edge, full-screen, with instant launch speeds and an icon on your phone or desktop dock.
             </Text>
 
             {/* Platform Selector Rail */}
@@ -198,7 +229,7 @@ export default function WelcomeScreen() {
                     selectedPlatform === 'ios' && styles.platformTabTextActive,
                   ]}
                 >
-                  iOS / SAFARI
+                  IPHONE / SAFARI
                 </Text>
               </TouchableOpacity>
 
@@ -253,7 +284,7 @@ export default function WelcomeScreen() {
                     selectedPlatform === 'desktop' && styles.platformTabTextActive,
                   ]}
                 >
-                  DESKTOP / PC
+                  MAC & PC
                 </Text>
               </TouchableOpacity>
             </View>
@@ -267,9 +298,9 @@ export default function WelcomeScreen() {
                       <Text style={styles.stepNumberText}>1</Text>
                     </View>
                     <View style={styles.stepContent}>
-                      <Text style={styles.stepHeading}>Open Safari & Tap Share</Text>
+                      <Text style={styles.stepHeading}>Open in Safari & Tap Share</Text>
                       <Text style={styles.stepInstruction}>
-                        Open <Text style={styles.highlightText}>hoqrux.vercel.app</Text> in Safari on your iPhone or iPad. Tap the <Text style={styles.highlightText}>Share</Text> icon at the bottom of the screen (the square with an arrow pointing upward).
+                        Open <Text style={styles.highlightText}>hoqrux.vercel.app</Text> in Safari on your iPhone. Tap the <Text style={styles.highlightText}>Share</Text> button in the bottom navigation bar (the square with an arrow pointing upward).
                       </Text>
                     </View>
                   </View>
@@ -279,9 +310,9 @@ export default function WelcomeScreen() {
                       <Text style={styles.stepNumberText}>2</Text>
                     </View>
                     <View style={styles.stepContent}>
-                      <Text style={styles.stepHeading}>Select &quot;Add to Home Screen&quot;</Text>
+                      <Text style={styles.stepHeading}>Choose &quot;Add to Home Screen&quot;</Text>
                       <Text style={styles.stepInstruction}>
-                        Scroll down the action list and tap <Text style={styles.highlightText}>&quot;Add to Home Screen&quot;</Text> (marked with a plus icon).
+                        Scroll down the share sheet and tap <Text style={styles.highlightText}>&quot;Add to Home Screen&quot;</Text>.
                       </Text>
                     </View>
                   </View>
@@ -291,9 +322,9 @@ export default function WelcomeScreen() {
                       <Text style={styles.stepNumberText}>3</Text>
                     </View>
                     <View style={styles.stepContent}>
-                      <Text style={styles.stepHeading}>Confirm & Launch</Text>
+                      <Text style={styles.stepHeading}>Confirm and Launch</Text>
                       <Text style={styles.stepInstruction}>
-                        Tap <Text style={styles.highlightText}>&quot;Add&quot;</Text> in the top right corner. The Hoqrux app icon will now appear on your home screen. Tap it to launch full-screen!
+                        Tap <Text style={styles.highlightText}>&quot;Add&quot;</Text> at the top right. Hoqrux will appear on your home screen like any native app. Tap it to launch full-screen with no browser address bars.
                       </Text>
                     </View>
                   </View>
@@ -307,9 +338,9 @@ export default function WelcomeScreen() {
                       <Text style={styles.stepNumberText}>1</Text>
                     </View>
                     <View style={styles.stepContent}>
-                      <Text style={styles.stepHeading}>Open Chrome & Tap Menu</Text>
+                      <Text style={styles.stepHeading}>Open in Chrome & Tap Menu</Text>
                       <Text style={styles.stepInstruction}>
-                        Open Hoqrux in Chrome on your Android device. Tap the <Text style={styles.highlightText}>three-dot menu (⋮)</Text> in the top right corner.
+                        Open Hoqrux in Chrome on your device. Tap the <Text style={styles.highlightText}>three-dot menu (⋮)</Text> in the upper right.
                       </Text>
                     </View>
                   </View>
@@ -319,9 +350,9 @@ export default function WelcomeScreen() {
                       <Text style={styles.stepNumberText}>2</Text>
                     </View>
                     <View style={styles.stepContent}>
-                      <Text style={styles.stepHeading}>Tap &quot;Install app&quot; or &quot;Add to Home screen&quot;</Text>
+                      <Text style={styles.stepHeading}>Select &quot;Install app&quot;</Text>
                       <Text style={styles.stepInstruction}>
-                        Select <Text style={styles.highlightText}>&quot;Install app&quot;</Text> (or &quot;Add to Home screen&quot;) from the dropdown options.
+                        Tap <Text style={styles.highlightText}>&quot;Install app&quot;</Text> (or &quot;Add to Home screen&quot;) from the dropdown menu.
                       </Text>
                     </View>
                   </View>
@@ -331,9 +362,9 @@ export default function WelcomeScreen() {
                       <Text style={styles.stepNumberText}>3</Text>
                     </View>
                     <View style={styles.stepContent}>
-                      <Text style={styles.stepHeading}>Confirm Install</Text>
+                      <Text style={styles.stepHeading}>Confirm Installation</Text>
                       <Text style={styles.stepInstruction}>
-                        Tap <Text style={styles.highlightText}>&quot;Install&quot;</Text> in the confirmation dialog. Hoqrux is now installed in your app drawer and home screen.
+                        Tap <Text style={styles.highlightText}>&quot;Install&quot;</Text> in the system prompt. Hoqrux is now saved to your app drawer and home screen.
                       </Text>
                     </View>
                   </View>
@@ -347,9 +378,9 @@ export default function WelcomeScreen() {
                       <Text style={styles.stepNumberText}>1</Text>
                     </View>
                     <View style={styles.stepContent}>
-                      <Text style={styles.stepHeading}>Locate the Address Bar Install Icon</Text>
+                      <Text style={styles.stepHeading}>Look at the Address Bar</Text>
                       <Text style={styles.stepInstruction}>
-                        In Google Chrome, Microsoft Edge, or Brave, look at the right end of the address (URL) bar for the <Text style={styles.highlightText}>Install Hoqrux</Text> icon (a small computer screen with a downward arrow).
+                        In Chrome, Edge, or Brave, look at the right end of the address bar for the <Text style={styles.highlightText}>Install Hoqrux</Text> icon (a small monitor with a downward arrow).
                       </Text>
                     </View>
                   </View>
@@ -359,9 +390,9 @@ export default function WelcomeScreen() {
                       <Text style={styles.stepNumberText}>2</Text>
                     </View>
                     <View style={styles.stepContent}>
-                      <Text style={styles.stepHeading}>Click &quot;Install&quot;</Text>
+                      <Text style={styles.stepHeading}>Click Install</Text>
                       <Text style={styles.stepInstruction}>
-                        Click the icon and select <Text style={styles.highlightText}>&quot;Install&quot;</Text> when prompted.
+                        Click the icon and hit <Text style={styles.highlightText}>&quot;Install&quot;</Text>.
                       </Text>
                     </View>
                   </View>
@@ -371,9 +402,9 @@ export default function WelcomeScreen() {
                       <Text style={styles.stepNumberText}>3</Text>
                     </View>
                     <View style={styles.stepContent}>
-                      <Text style={styles.stepHeading}>Launch as Desktop App</Text>
+                      <Text style={styles.stepHeading}>Pin to Dock or Taskbar</Text>
                       <Text style={styles.stepInstruction}>
-                        Hoqrux will immediately open in its own dedicated, borderless desktop window. You can pin it to your Mac Dock or Windows Taskbar for instant access.
+                        Hoqrux opens immediately in its own borderless window. Pin it to your macOS Dock or Windows Taskbar for instantaneous launch.
                       </Text>
                     </View>
                   </View>
@@ -384,42 +415,47 @@ export default function WelcomeScreen() {
             {/* PWA Benefits Badges */}
             <View style={styles.benefitsRow}>
               <View style={styles.benefitPill}>
-                <Ionicons name="flash-sharp" size={12} color={colors.accent} />
-                <Text style={styles.benefitPillText}>INSTANT BOOT (&lt;1s)</Text>
+                <Ionicons name="flash-sharp" size={11} color={colors.accent} />
+                <Text style={styles.benefitPillText}>INSTANT BOOT</Text>
               </View>
               <View style={styles.benefitPill}>
-                <Ionicons name="expand-sharp" size={12} color={colors.accent} />
-                <Text style={styles.benefitPillText}>100% FULL SCREEN</Text>
+                <Ionicons name="expand-sharp" size={11} color={colors.accent} />
+                <Text style={styles.benefitPillText}>100% STANDALONE SCREEN</Text>
               </View>
               <View style={styles.benefitPill}>
-                <Ionicons name="cloud-offline-sharp" size={12} color={colors.accent} />
-                <Text style={styles.benefitPillText}>OFFLINE CACHE</Text>
+                <Ionicons name="eye-off-outline" size={11} color={colors.accent} />
+                <Text style={styles.benefitPillText}>ZERO ADVERTISING</Text>
+              </View>
+              <View style={styles.benefitPill}>
+                <Ionicons name="lock-closed-outline" size={11} color={colors.accent} />
+                <Text style={styles.benefitPillText}>PRIVATE LOCAL DATA</Text>
               </View>
             </View>
           </View>
 
-          {/* 5. Bottom Action & Launch Callout */}
-          <View style={styles.bottomCallout}>
-            <Text style={styles.bottomCalloutTitle}>READY TO CALIBRATE YOUR RADAR?</Text>
-            <Text style={styles.bottomCalloutSub}>
-              Launch the application directly in your browser. All your tracking data is securely synced and preserved.
+          {/* 5. Minimalist Call to Action */}
+          <View style={styles.invitationSection}>
+            <Text style={styles.invitationHeading}>Ready to start your ledger?</Text>
+            <Text style={styles.invitationSub}>
+              Everything is saved locally and synced automatically when you sign in.
             </Text>
             <TouchableOpacity
-              style={styles.bottomLaunchBtn}
+              style={styles.invitationBtn}
               onPress={handleLaunchApp}
               activeOpacity={0.85}
             >
-              <Text style={styles.bottomLaunchBtnText}>ENTER HOQRUX NOW →</Text>
+              <Text style={styles.invitationBtnText}>ENTER HOQRUX →</Text>
             </TouchableOpacity>
           </View>
 
-          {/* 6. Footer */}
+          {/* 6. Understated Cinephile Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              HOQRUX // ASIMOVIAN BRUTALIST ARCHITECTURE • BUILT FOR SPEED
+            <Text style={styles.footerBrand}>HOQRUX</Text>
+            <Text style={styles.footerCopy}>
+              A quiet ledger for film and television. Built for people who watch closely.
             </Text>
-            <Text style={styles.footerSub}>
-              All poster artwork and episode metadata provided by TMDB. Zero third-party advertisements or trackers.
+            <Text style={styles.footerCredits}>
+              Artwork and metadata via TMDB and JustWatch. Independent, private, and tracker-free.
             </Text>
           </View>
         </View>
@@ -445,14 +481,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    maxWidth: 1100,
     width: '100%',
+  },
+  headerInnerDesktop: {
+    maxWidth: 960,
     alignSelf: 'center',
   },
-  brandRow: {
+  brandGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   brandLogo: {
     fontFamily: typography.fontBrand,
@@ -461,19 +499,16 @@ const styles = StyleSheet.create({
     letterSpacing: Platform.OS === 'ios' ? 2 : 0,
     includeFontPadding: false,
   },
-  brandBadge: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 2,
-    borderWidth: 1,
-    borderColor: colors.border,
+  brandDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: colors.borderLight,
   },
-  brandBadgeText: {
+  brandSubtitle: {
     fontFamily: typography.fontBold,
-    fontSize: 8.5,
+    fontSize: 9,
     color: colors.textMuted,
-    letterSpacing: 0.8,
+    letterSpacing: 1.2,
     includeFontPadding: false,
   },
   launchBtnTop: {
@@ -499,8 +534,10 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 20,
-    maxWidth: 1100,
     width: '100%',
+  },
+  contentContainerDesktop: {
+    maxWidth: 960,
     alignSelf: 'center',
   },
 
@@ -511,41 +548,77 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  overlineTag: {
+  leadTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
     gap: 6,
   },
-  livePulseDot: {
+  redDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: colors.accent,
   },
-  overlineText: {
+  leadTagText: {
     fontFamily: typography.fontBold,
-    fontSize: 9.5,
+    fontSize: 9,
     color: colors.accent,
     letterSpacing: 1.5,
     includeFontPadding: false,
   },
   heroTitle: {
     fontFamily: typography.fontBlack,
-    fontSize: 42,
-    lineHeight: 46,
+    fontSize: 38,
+    lineHeight: 42,
     color: colors.textPrimary,
-    letterSpacing: Platform.OS === 'ios' ? 1 : 0,
+    letterSpacing: Platform.OS === 'ios' ? 0.5 : 0,
     includeFontPadding: false,
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  heroSubtitle: {
+  manifestoParagraph: {
     fontFamily: typography.fontBody,
     fontSize: 14,
-    lineHeight: 22,
+    lineHeight: 23,
     color: colors.textSecondary,
-    maxWidth: 680,
-    marginBottom: 24,
+    marginBottom: 14,
+    maxWidth: 720,
+  },
+  manifestoBulletList: {
+    marginVertical: 10,
+    gap: 10,
+    maxWidth: 720,
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  bulletDash: {
+    fontFamily: typography.fontBold,
+    fontSize: 13,
+    color: colors.accent,
+    lineHeight: 21,
+  },
+  bulletText: {
+    flex: 1,
+    fontFamily: typography.fontBody,
+    fontSize: 13.5,
+    lineHeight: 21,
+    color: colors.textSecondary,
+  },
+  bulletEmphasis: {
+    fontFamily: typography.fontBold,
+    color: colors.textPrimary,
+  },
+  manifestoSignoff: {
+    fontFamily: typography.fontBold,
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.textPrimary,
+    letterSpacing: 0.3,
+    marginTop: 8,
+    marginBottom: 26,
   },
   heroCtasRow: {
     flexDirection: 'row',
@@ -558,7 +631,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.accent,
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     borderRadius: 2,
   },
   primaryCtaText: {
@@ -580,77 +653,77 @@ const styles = StyleSheet.create({
   },
   secondaryCtaText: {
     fontFamily: typography.fontBold,
-    fontSize: 11,
+    fontSize: 10.5,
     color: colors.textPrimary,
     letterSpacing: 1,
     includeFontPadding: false,
   },
 
-  // Capabilities
-  featuresSection: {
+  // Tenets Section
+  tenetsSection: {
     paddingVertical: 36,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   sectionHeaderRow: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  sectionIndex: {
+  sectionTag: {
     fontFamily: typography.fontBold,
-    fontSize: 9.5,
+    fontSize: 9,
     color: colors.textMuted,
     letterSpacing: 1.5,
     includeFontPadding: false,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   sectionHeaderTitle: {
     fontFamily: typography.fontBlack,
-    fontSize: 20,
+    fontSize: 18,
     color: colors.textPrimary,
-    letterSpacing: Platform.OS === 'ios' ? 1.5 : 0.5,
+    letterSpacing: Platform.OS === 'ios' ? 1 : 0.5,
     includeFontPadding: false,
   },
-  featuresGrid: {
+  tenetsGrid: {
     flexDirection: 'column',
     gap: 14,
   },
-  featuresGridDesktop: {
+  tenetsGridDesktop: {
     flexDirection: 'row',
     gap: 16,
   },
-  featureCard: {
+  tenetItem: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 18,
     borderRadius: 2,
   },
-  featureCardDesktop: {
+  tenetItemDesktop: {
     flex: 1,
   },
-  featureIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 2,
-    backgroundColor: colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+  tenetHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 8,
   },
-  featureTitle: {
+  tenetIndex: {
     fontFamily: typography.fontBlack,
-    fontSize: 13,
-    color: colors.textPrimary,
-    letterSpacing: 0.8,
-    includeFontPadding: false,
-    marginBottom: 6,
+    fontSize: 12,
+    color: colors.accent,
+    letterSpacing: 0.5,
   },
-  featureDesc: {
+  tenetTitle: {
+    fontFamily: typography.fontBlack,
+    fontSize: 12,
+    color: colors.textPrimary,
+    letterSpacing: 1,
+    includeFontPadding: false,
+  },
+  tenetDesc: {
     fontFamily: typography.fontBody,
-    fontSize: 11.5,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 19,
     color: colors.textSecondary,
   },
 
@@ -663,10 +736,10 @@ const styles = StyleSheet.create({
   installLead: {
     fontFamily: typography.fontBody,
     fontSize: 13,
-    lineHeight: 20,
+    lineHeight: 21,
     color: colors.textSecondary,
     marginBottom: 20,
-    maxWidth: 750,
+    maxWidth: 720,
   },
   platformRail: {
     flexDirection: 'row',
@@ -692,7 +765,7 @@ const styles = StyleSheet.create({
   },
   platformTabText: {
     fontFamily: typography.fontBold,
-    fontSize: 10,
+    fontSize: 9.5,
     color: colors.textMuted,
     letterSpacing: 0.8,
     includeFontPadding: false,
@@ -714,8 +787,8 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   stepNumberBadge: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     borderRadius: 2,
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
@@ -734,9 +807,9 @@ const styles = StyleSheet.create({
   },
   stepHeading: {
     fontFamily: typography.fontBold,
-    fontSize: 13,
+    fontSize: 12.5,
     color: colors.textPrimary,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
     includeFontPadding: false,
     marginBottom: 4,
   },
@@ -753,15 +826,15 @@ const styles = StyleSheet.create({
   benefitsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 18,
+    gap: 8,
+    marginTop: 16,
   },
   benefitPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -769,48 +842,47 @@ const styles = StyleSheet.create({
   },
   benefitPillText: {
     fontFamily: typography.fontBold,
-    fontSize: 9,
+    fontSize: 8.5,
     color: colors.textSecondary,
     letterSpacing: 0.8,
     includeFontPadding: false,
   },
 
-  // Bottom Callout
-  bottomCallout: {
+  // Minimal Call to Action
+  invitationSection: {
     marginVertical: 36,
     padding: 24,
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 2,
     alignItems: 'center',
-    textAlign: 'center',
   },
-  bottomCalloutTitle: {
+  invitationHeading: {
     fontFamily: typography.fontBlack,
     fontSize: 16,
     color: colors.textPrimary,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     includeFontPadding: false,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
-  bottomCalloutSub: {
+  invitationSub: {
     fontFamily: typography.fontBody,
     fontSize: 12,
     color: colors.textSecondary,
     textAlign: 'center',
-    maxWidth: 500,
-    marginBottom: 18,
+    maxWidth: 460,
+    marginBottom: 16,
     lineHeight: 18,
   },
-  bottomLaunchBtn: {
+  invitationBtn: {
     backgroundColor: colors.accent,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 2,
   },
-  bottomLaunchBtnText: {
+  invitationBtnText: {
     fontFamily: typography.fontBlack,
     fontSize: 11,
     color: '#FFFFFF',
@@ -820,26 +892,32 @@ const styles = StyleSheet.create({
 
   // Footer
   footer: {
-    paddingVertical: 20,
+    paddingVertical: 24,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     alignItems: 'center',
   },
-  footerText: {
-    fontFamily: typography.fontBold,
-    fontSize: 9,
-    color: colors.textMuted,
-    letterSpacing: 1.2,
+  footerBrand: {
+    fontFamily: typography.fontBrand,
+    fontSize: 14,
+    color: colors.accent,
+    letterSpacing: 1,
     includeFontPadding: false,
     marginBottom: 6,
-    textAlign: 'center',
   },
-  footerSub: {
+  footerCopy: {
+    fontFamily: typography.fontBold,
+    fontSize: 10,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  footerCredits: {
     fontFamily: typography.fontBody,
     fontSize: 9,
     color: colors.textMuted,
     textAlign: 'center',
-    maxWidth: 600,
+    maxWidth: 500,
     lineHeight: 14,
   },
 });
