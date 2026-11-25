@@ -60,24 +60,39 @@ export default function WelcomeScreen() {
           {/* Top Brand Marker */}
           <View style={styles.brandRow}>
             <Text style={styles.brandLogo}>HOQRUX</Text>
+            <View style={styles.brandBadge}>
+              <Text style={styles.brandBadgeText}>MOVIES & TV</Text>
+            </View>
           </View>
 
           {/* Stark Headline */}
           <Text style={styles.headline}>
-            A quiet place for movies and shows.
+            Track what you watch.{'\n'}Find what to watch next.
           </Text>
 
-          {/* Candid Plain English Description */}
+          {/* Core App Description */}
           <Text style={styles.bodyParagraph}>
-            Most apps want you to scroll feeds, write reviews for likes, and watch ads.
+            Hoqrux is a clean tracker and recommendation app for movies and TV series.
           </Text>
 
-          <Text style={styles.bodyParagraph}>
-            Hoqrux is just a simple notebook for what you watch. Mark an episode when you finish it, see when the next one airs, and write quick notes just for yourself.
-          </Text>
+          {/* Minimal 2-Point Summary */}
+          <View style={styles.featurePoints}>
+            <View style={styles.pointRow}>
+              <Text style={styles.pointBullet}>—</Text>
+              <Text style={styles.pointText}>
+                <Text style={styles.pointBold}>Track:</Text> Log episodes with one tap, organize your watchlists, and see countdowns for upcoming release dates.
+              </Text>
+            </View>
+            <View style={styles.pointRow}>
+              <Text style={styles.pointBullet}>—</Text>
+              <Text style={styles.pointText}>
+                <Text style={styles.pointBold}>Discover:</Text> Find recommendations across movies, series, and anime — with ratings and where to stream them.
+              </Text>
+            </View>
+          </View>
 
           <Text style={styles.bodyFootnote}>
-            No ads. No followers. No feeds.
+            Free. No ads. No social noise.
           </Text>
 
           {/* Direct Entry Button */}
@@ -236,34 +251,75 @@ const styles = StyleSheet.create({
     letterSpacing: Platform.OS === 'ios' ? 2 : 0,
     includeFontPadding: false,
   },
+  brandBadge: {
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 2,
+  },
+  brandBadgeText: {
+    fontFamily: typography.fontBold,
+    fontSize: 8.5,
+    color: colors.textMuted,
+    letterSpacing: 1,
+    includeFontPadding: false,
+  },
 
   // Headline
   headline: {
     fontFamily: typography.fontBlack,
-    fontSize: 34,
-    lineHeight: 38,
+    fontSize: 32,
+    lineHeight: 36,
     color: colors.textPrimary,
     letterSpacing: Platform.OS === 'ios' ? -0.5 : 0,
     includeFontPadding: false,
-    marginBottom: 20,
+    marginBottom: 16,
   },
 
-  // Manifesto Copy
+  // Core Purpose Copy
   bodyParagraph: {
     fontFamily: typography.fontBody,
-    fontSize: 14.5,
-    lineHeight: 23,
+    fontSize: 14,
+    lineHeight: 22,
     color: colors.textSecondary,
     marginBottom: 14,
   },
-  bodyFootnote: {
+  featurePoints: {
+    marginBottom: 14,
+    gap: 8,
+  },
+  pointRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  pointBullet: {
     fontFamily: typography.fontBold,
     fontSize: 13,
+    color: colors.accent,
     lineHeight: 20,
+  },
+  pointText: {
+    flex: 1,
+    fontFamily: typography.fontBody,
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.textSecondary,
+  },
+  pointBold: {
+    fontFamily: typography.fontBold,
+    color: colors.textPrimary,
+  },
+  bodyFootnote: {
+    fontFamily: typography.fontBold,
+    fontSize: 12.5,
+    lineHeight: 18,
     color: colors.textPrimary,
     letterSpacing: 0.4,
-    marginTop: 4,
-    marginBottom: 28,
+    marginTop: 2,
+    marginBottom: 24,
   },
 
   // Button
