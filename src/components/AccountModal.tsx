@@ -8,12 +8,12 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from '../utils/haptics';
+import { confirmAction } from '../utils/alerts';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { useAuth } from '../context/AuthContext';
@@ -104,23 +104,18 @@ export const AccountModal: React.FC<AccountModalProps> = ({ visible, onClose }) 
   };
 
   const handleSignOut = () => {
-    Alert.alert(
-      'SIGN OUT',
-      'Your watchlists and viewing history remain safely backed up in your account. You can sign back in anytime to restore them.',
-      [
-        { text: 'CANCEL', style: 'cancel' },
-        {
-          text: 'SIGN OUT',
-          style: 'destructive',
-          onPress: async () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            await signOut();
-            await refreshTracking();
-            onClose();
-          },
-        },
-      ]
-    );
+    confirmAction({
+      title: 'SIGN OUT',
+      message: 'Your watchlists and viewing history remain safely backed up in your account. You can sign back in anytime to restore them.',
+      confirmText: 'SIGN OUT',
+      destructive: true,
+      onConfirm: async () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        await signOut();
+        await refreshTracking();
+        onClose();
+      },
+    });
   };
 
   const isIOS =

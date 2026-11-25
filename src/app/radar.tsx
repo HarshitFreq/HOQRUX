@@ -8,13 +8,13 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
-  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { feedback } from '../utils/feedback';
+import { showAlert } from '../utils/alerts';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { useTracking } from '../context/TrackingContext';
@@ -197,7 +197,7 @@ export default function ReleaseRadarScreen() {
           setStatusBanner(`RADAR ALERT SYNCED // ${episode.showTitle.toUpperCase()}`);
           setTimeout(() => setStatusBanner(null), 3000);
         } else {
-          Alert.alert(
+          showAlert(
             'PERMISSIONS REQUIRED',
             'Allow notifications to receive broadcast alerts when this episode airs.'
           );

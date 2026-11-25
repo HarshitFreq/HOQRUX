@@ -1,7 +1,8 @@
 import React, { useState, memo, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { feedback } from '../utils/feedback';
+import { confirmAction } from '../utils/alerts';
 import { Episode, MediaItem } from '../services/types';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -41,20 +42,15 @@ export const EpisodeItem: React.FC<EpisodeItemProps> = memo(({ episode, mediaIte
 
   const handleLongPress = useCallback(() => {
     feedback.warning();
-    Alert.alert(
-      'Batch Log Episodes',
-      `Mark all episodes up to Season ${episode.seasonNumber}, Episode ${epNumStr} as watched?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Mark Watched Up To Here',
-          onPress: () => {
-            feedback.success();
-            markEpisodesUpTo(mediaItem, episode.seasonNumber, episode.episodeNumber, true);
-          },
-        },
-      ]
-    );
+    confirmAction({
+      title: 'Batch Log Episodes',
+      message: `Mark all episodes up to Season ${episode.seasonNumber}, Episode ${epNumStr} as watched?`,
+      confirmText: 'Mark Watched Up To Here',
+      onConfirm: () => {
+        feedback.success();
+        markEpisodesUpTo(mediaItem, episode.seasonNumber, episode.episodeNumber, true);
+      },
+    });
   }, [epNumStr, markEpisodesUpTo, mediaItem, episode]);
 
   const thumbUri = episode.stillPath || mediaItem.backdropPath || mediaItem.posterPath;

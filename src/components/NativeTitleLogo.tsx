@@ -8,6 +8,7 @@ import {
   Animated,
   Easing,
   View,
+  Platform,
 } from 'react-native';
 import { SvgUri } from 'react-native-svg';
 import {
@@ -293,12 +294,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginVertical: 4,
     position: 'relative',
-    // Ambient luminescence lifts dark logos off black background cleanly without ugly boxes
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 10,
-    elevation: 2,
+    backgroundColor: 'transparent',
   },
   pngLogo: {
     width: 260,
@@ -306,6 +302,10 @@ const styles = StyleSheet.create({
     zIndex: 1,
     marginHorizontal: 4,
     marginVertical: 2,
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'web'
+      ? ({ filter: 'drop-shadow(0px 2px 6px rgba(0, 0, 0, 0.7))' } as any)
+      : {}),
   },
   fallbackTitle: {
     color: colors.textPrimary,

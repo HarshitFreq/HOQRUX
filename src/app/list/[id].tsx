@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Platform,
   useWindowDimensions,
   FlatList,
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from '../../utils/haptics';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
+import { confirmAction } from '../../utils/alerts';
 import { useTracking } from '../../context/TrackingContext';
 import { PosterCard } from '../../components/PosterCard';
 import { MediaItem } from '../../services/types';
@@ -68,18 +68,17 @@ export default function ListDetailScreen() {
     .filter((m): m is MediaItem => Boolean(m));
 
   const handleDelete = () => {
-    Alert.alert('DELETE LIST', `Are you sure you want to delete "${list.name}"?`, [
-      { text: 'CANCEL', style: 'cancel' },
-      {
-        text: 'DELETE',
-        style: 'destructive',
-        onPress: async () => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          await deleteWatchlist(list.id);
-          router.back();
-        },
+    confirmAction({
+      title: 'DELETE LIST',
+      message: `Are you sure you want to delete "${list.name}"?`,
+      confirmText: 'DELETE',
+      destructive: true,
+      onConfirm: async () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await deleteWatchlist(list.id);
+        router.back();
       },
-    ]);
+    });
   };
 
   const handleRemoveTitle = (titleId: string) => {

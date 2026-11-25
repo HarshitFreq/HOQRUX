@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -24,6 +23,7 @@ import {
 import { airingCalendarService } from '../../services/airingCalendarService';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
+import { confirmAction, showAlert } from '../../utils/alerts';
 import { useTracking } from '../../context/TrackingContext';
 import { useAuth } from '../../context/AuthContext';
 import { AccountModal } from '../../components/AccountModal';
@@ -40,7 +40,6 @@ export default function ActivityScreen() {
     history,
     stats,
     clearHistory,
-    clearAllActivity,
     removeHistoryItem,
     resolveMediaItem,
     refreshTracking,
@@ -95,71 +94,49 @@ export default function ActivityScreen() {
   };
 
   const handleSignOut = () => {
-    Alert.alert(
-      'SIGN OUT',
-      'Your watchlists and viewing history remain safely in your account. You can sign back in anytime to restore them.',
-      [
-        { text: 'CANCEL', style: 'cancel' },
-        {
-          text: 'SIGN OUT',
-          style: 'destructive',
-          onPress: async () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            await signOut();
-            await refreshTracking();
-          },
-        },
-      ]
-    );
+    confirmAction({
+      title: 'SIGN OUT',
+      message: 'Your watchlists and viewing history remain safely in your account. You can sign back in anytime to restore them.',
+      confirmText: 'SIGN OUT',
+      destructive: true,
+      onConfirm: async () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        await signOut();
+        await refreshTracking();
+      },
+    });
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'DELETE ACCOUNT & PURGE DATA',
-      'This action permanently erases your account, custom watchlists, ratings, and viewing history from both your device and cloud servers. This cannot be undone.',
-      [
-        { text: 'CANCEL', style: 'cancel' },
-        {
-          text: 'PERMANENTLY DELETE',
-          style: 'destructive',
-          onPress: async () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            const res = await deleteAccount();
-            if (res.success) {
-              await refreshTracking();
-              Alert.alert('ACCOUNT PURGED', 'Your account and tracking data have been permanently deleted.');
-            } else {
-              Alert.alert('ERROR', res.error || 'Failed to delete account.');
-            }
-          },
-        },
-      ]
-    );
+    confirmAction({
+      title: 'DELETE ACCOUNT & PURGE DATA',
+      message: 'This action permanently erases your account, custom watchlists, ratings, and viewing history from both your device and cloud servers. This cannot be undone.',
+      confirmText: 'PERMANENTLY DELETE',
+      destructive: true,
+      onConfirm: async () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        const res = await deleteAccount();
+        if (res.success) {
+          await refreshTracking();
+          showAlert('ACCOUNT PURGED', 'Your account and tracking data have been permanently deleted.');
+        } else {
+          showAlert('ERROR', res.error || 'Failed to delete account.');
+        }
+      },
+    });
   };
 
   const handleClearHistory = () => {
-    Alert.alert(
-      'CLEAR VIEWING LOG',
-      'Choose what to clear from your tracking data:',
-      [
-        { text: 'CANCEL', style: 'cancel' },
-        {
-          text: 'CLEAR LOG ONLY',
-          onPress: async () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            await clearHistory();
-          },
-        },
-        {
-          text: 'RESET ALL (QUEUE & LOGS)',
-          style: 'destructive',
-          onPress: async () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            await clearAllActivity();
-          },
-        },
-      ]
-    );
+    confirmAction({
+      title: 'CLEAR VIEWING LOG',
+      message: 'Are you sure you want to clear your viewing history log?',
+      confirmText: 'CLEAR LOG',
+      destructive: true,
+      onConfirm: async () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await clearHistory();
+      },
+    });
   };
 
   const handleRemoveItem = (id: string) => {
