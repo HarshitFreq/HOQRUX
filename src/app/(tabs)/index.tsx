@@ -342,8 +342,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: Platform.OS === 'web' ? 84 : 24,
+    paddingBottom: Platform.OS === 'web' ? 96 : 24,
     paddingTop: 8,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   emptySpotlightCard: {
     backgroundColor: colors.surfaceElevated,

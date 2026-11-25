@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Text, Platform } from 'react-native';
+import { Text, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { feedback } from '../../utils/feedback';
 import { colors } from '../../theme/colors';
@@ -34,10 +34,12 @@ function createTabLabel(label: string) {
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const bottomInset = insets.bottom || 0;
   const isWeb = Platform.OS === 'web';
-  const webBottomPadding = 'max(env(safe-area-inset-bottom, 0px), 16px)';
-  const webBarHeight = 'calc(52px + max(env(safe-area-inset-bottom, 0px), 16px))';
+  const isDesktop = isWeb && windowWidth >= 768;
+  const webBottomPadding = isDesktop ? 6 : 'max(env(safe-area-inset-bottom, 0px), 16px)';
+  const webBarHeight = isDesktop ? 60 : 'calc(52px + max(env(safe-area-inset-bottom, 0px), 16px))';
   // Compact Swiss Brutalist tab bar: 56px content height + safe area bottom inset
   const barHeight = 56 + bottomInset;
 
@@ -63,6 +65,25 @@ export default function TabLayout() {
           paddingTop: 5,
           paddingBottom: isWeb ? (webBottomPadding as any) : bottomInset,
           elevation: 0,
+          ...(isDesktop
+            ? {
+                position: 'absolute',
+                bottom: 20,
+                left: 0,
+                right: 0,
+                marginHorizontal: 'auto',
+                maxWidth: 540,
+                width: '90%',
+                borderRadius: 28,
+                borderWidth: 1,
+                borderColor: colors.border,
+                overflow: 'hidden',
+                shadowColor: '#000000',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.5,
+                shadowRadius: 20,
+              }
+            : {}),
         },
         tabBarItemStyle: {
           justifyContent: 'center',

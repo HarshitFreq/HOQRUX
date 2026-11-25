@@ -846,6 +846,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 16,
+    maxWidth: 960,
+    width: '100%',
+    alignSelf: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -1090,7 +1093,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Platform.OS === 'web' ? 84 : 24,
+    paddingBottom: Platform.OS === 'web' ? 96 : 24,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1413,7 +1416,7 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   settingsScrollContent: {
-    paddingBottom: Platform.OS === 'web' ? 84 : 24,
+    paddingBottom: Platform.OS === 'web' ? 96 : 24,
     gap: 12,
   },
   settingsCard: {

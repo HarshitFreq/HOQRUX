@@ -550,6 +550,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 12px)' as any) : 8,
     paddingBottom: 8,
+    maxWidth: 1000,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     flexDirection: 'row',
@@ -638,6 +641,9 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    maxWidth: 1000,
+    width: '100%',
+    alignSelf: 'center',
   },
   screenTitle: {
     fontFamily: typography.fontBlack,
@@ -658,6 +664,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
+    maxWidth: 1000,
+    width: '100%',
+    alignSelf: 'center',
   },
   segmentBtn: {
     flex: 1,
@@ -700,6 +709,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 14,
     paddingBottom: 120,
+    maxWidth: 1000,
+    width: '100%',
+    alignSelf: 'center',
   },
   emptyContainer: {
     alignItems: 'center',

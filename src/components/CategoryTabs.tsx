@@ -111,6 +111,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     marginBottom: 10,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   logoTitle: {
     fontFamily: typography.fontBrand,
@@ -131,6 +134,9 @@ const styles = StyleSheet.create({
   },
   tabsRow: {
     paddingHorizontal: 16,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   segmentedRail: {
     flexDirection: 'row',

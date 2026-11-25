@@ -27,11 +27,24 @@ export default function ListsScreen() {
   const [newListName, setNewListName] = useState('');
   const [newListDesc, setNewListDesc] = useState('');
 
+  const isWeb = Platform.OS === 'web';
+  const effectiveWidth = useMemo(() => {
+    return isWeb ? Math.min(windowWidth, 1280) : windowWidth;
+  }, [isWeb, windowWidth]);
+  const isDesktop = isWeb && windowWidth >= 768;
+
+  // In 2-column desktop grid, card width is (effectiveWidth - 32px screen padding - 16px gap) / 2
+  const cardCalculatedWidth = useMemo(() => {
+    if (isDesktop) {
+      return Math.floor((effectiveWidth - 48) / 2);
+    }
+    return effectiveWidth - 32;
+  }, [isDesktop, effectiveWidth]);
+
   // 5 mini posters spanning the width of the card symmetrically
-  // 32px screen padding + 28px card padding + 32px gaps (4 * 8px) = 92px
   const miniPosterWidth = useMemo(
-    () => Math.floor((windowWidth - 92) / 5),
-    [windowWidth]
+    () => Math.floor((cardCalculatedWidth - 60) / 5),
+    [cardCalculatedWidth]
   );
   const miniPosterHeight = useMemo(
     () => Math.floor(miniPosterWidth * 1.5),
@@ -70,7 +83,7 @@ export default function ListsScreen() {
         key={list.id}
         activeOpacity={0.8}
         onPress={() => router.push({ pathname: '/list/[id]', params: { id: list.id } })}
-        style={styles.listCard}
+        style={[styles.listCard, isDesktop && { width: cardCalculatedWidth, marginBottom: 0 }]}
       >
         <View style={styles.cardHeader}>
           <View style={styles.titleWithDot}>
@@ -152,7 +165,9 @@ export default function ListsScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionLabel}>COLLECTIONS</Text>
         </View>
-        {watchlists.filter((l) => !l.isCustom).map((l) => renderListCard(l))}
+        <View style={styles.cardsGrid}>
+          {watchlists.filter((l) => !l.isCustom).map((l) => renderListCard(l))}
+        </View>
 
         {/* Custom Lists */}
         {watchlists.some((l) => l.isCustom) && (
@@ -160,7 +175,9 @@ export default function ListsScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>CUSTOM LISTS</Text>
             </View>
-            {watchlists.filter((l) => l.isCustom).map((l) => renderListCard(l))}
+            <View style={styles.cardsGrid}>
+              {watchlists.filter((l) => l.isCustom).map((l) => renderListCard(l))}
+            </View>
           </>
         )}
       </ScrollView>
@@ -230,7 +247,15 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'web' ? 84 : 24,
+    paddingBottom: Platform.OS === 'web' ? 96 : 24,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  cardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
   },
   header: {
     flexDirection: 'row',

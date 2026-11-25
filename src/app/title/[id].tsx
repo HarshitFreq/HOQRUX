@@ -1111,8 +1111,9 @@ const styles = StyleSheet.create({
   },
   backdropContainer: {
     width: '100%',
-    height: 260,
+    height: Platform.OS === 'web' ? 360 : 260,
     position: 'relative',
+    backgroundColor: '#050507',
   },
   backdropImage: {
     width: '100%',
@@ -1141,6 +1142,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 12px)' as any) : 8,
+    maxWidth: 1100,
+    width: '100%',
+    alignSelf: 'center',
   },
   navIconButton: {
     width: 38,
@@ -1163,6 +1167,9 @@ const styles = StyleSheet.create({
   heroSection: {
     paddingHorizontal: 16,
     marginTop: -38,
+    maxWidth: 1100,
+    width: '100%',
+    alignSelf: 'center',
   },
   posterAndMetaRow: {
     flexDirection: 'row',

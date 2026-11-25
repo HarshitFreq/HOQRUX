@@ -55,18 +55,29 @@ const QUICK_TRENDING_PICKS = [
   'Spirited Away',
 ];
 
-const NUM_COLUMNS = 3;
 const HORIZONTAL_PADDING = 32;
 const GRID_GAP = 10;
 
 export default function ExploreScreen() {
   const { cacheMediaItem } = useTracking();
   const { width: windowWidth } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
 
-  // Dynamic 3-column poster dimensions
+  const effectiveWidth = useMemo(() => {
+    return isWeb ? Math.min(windowWidth, 1280) : windowWidth;
+  }, [isWeb, windowWidth]);
+
+  const numColumns = useMemo(() => {
+    if (effectiveWidth >= 1200) return 6;
+    if (effectiveWidth >= 900) return 5;
+    if (effectiveWidth >= 600) return 4;
+    return 3;
+  }, [effectiveWidth]);
+
+  // Dynamic responsive poster dimensions
   const cardWidth = useMemo(
-    () => Math.floor((windowWidth - HORIZONTAL_PADDING - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS),
-    [windowWidth]
+    () => Math.floor((effectiveWidth - HORIZONTAL_PADDING - GRID_GAP * (numColumns - 1)) / numColumns),
+    [effectiveWidth, numColumns]
   );
 
   // Universal Search State
@@ -393,91 +404,93 @@ export default function ExploreScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       {/* 1. TOP HEADER & UNIVERSAL SEARCH BAR */}
       <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Text
-            style={styles.headerTitle}
-            allowFontScaling={true}
-            maxFontSizeMultiplier={1.25}
-          >
-            EXPLORE
-          </Text>
-
-          <TouchableOpacity
-            style={styles.randomBtn}
-            activeOpacity={0.8}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setIsRandomModalOpen(true);
-            }}
-          >
-            <Ionicons name="dice-outline" size={13} color={colors.accent} style={{ marginRight: 5 }} />
-            <Text style={styles.randomBtnText}>SURPRISE ME</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Swiss Brutalist Search Input */}
-        <View style={[styles.searchBar, isInputFocused && styles.searchBarFocused]}>
-          <Ionicons
-            name="search"
-            size={16}
-            color={isInputFocused ? colors.accent : colors.textSecondary}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            ref={searchBarRef}
-            style={styles.searchInput}
-            placeholder="Search films, series, anime, directors..."
-            placeholderTextColor={colors.textMuted}
-            value={query}
-            onChangeText={handleQueryChange}
-            onFocus={() => setIsInputFocused(true)}
-            onBlur={() => {
-              setTimeout(() => setIsInputFocused(false), 250);
-            }}
-            autoCorrect={false}
-            spellCheck={false}
-            returnKeyType="search"
-            onSubmitEditing={() => {
-              if (query.trim()) {
-                storageService.saveRecentSearch(query.trim()).then(setRecentSearches);
-              }
-              Keyboard.dismiss();
-            }}
-          />
-          {query.length > 0 && (
-            <TouchableOpacity
-              onPress={handleClearQuery}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              activeOpacity={0.7}
+        <View style={styles.headerContent}>
+          <View style={styles.headerTitleRow}>
+            <Text
+              style={styles.headerTitle}
+              allowFontScaling={true}
+              maxFontSizeMultiplier={1.25}
             >
-              <Ionicons name="close-circle" size={17} color={colors.textSecondary} />
+              EXPLORE
+            </Text>
+
+            <TouchableOpacity
+              style={styles.randomBtn}
+              activeOpacity={0.8}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsRandomModalOpen(true);
+              }}
+            >
+              <Ionicons name="dice-outline" size={13} color={colors.accent} style={{ marginRight: 5 }} />
+              <Text style={styles.randomBtnText}>SURPRISE ME</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Swiss Brutalist Search Input */}
+          <View style={[styles.searchBar, isInputFocused && styles.searchBarFocused]}>
+            <Ionicons
+              name="search"
+              size={16}
+              color={isInputFocused ? colors.accent : colors.textSecondary}
+              style={styles.searchIcon}
+            />
+            <TextInput
+              ref={searchBarRef}
+              style={styles.searchInput}
+              placeholder="Search films, series, anime, directors..."
+              placeholderTextColor={colors.textMuted}
+              value={query}
+              onChangeText={handleQueryChange}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => {
+                setTimeout(() => setIsInputFocused(false), 250);
+              }}
+              autoCorrect={false}
+              spellCheck={false}
+              returnKeyType="search"
+              onSubmitEditing={() => {
+                if (query.trim()) {
+                  storageService.saveRecentSearch(query.trim()).then(setRecentSearches);
+                }
+                Keyboard.dismiss();
+              }}
+            />
+            {query.length > 0 && (
+              <TouchableOpacity
+                onPress={handleClearQuery}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle" size={17} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Live Typo & Predictive Autocomplete Chips */}
+          {isInputFocused && suggestions.length > 0 && query.trim().length >= 2 && (
+            <View style={styles.suggestionsRow}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.suggestionsContent}
+              >
+                {suggestions.map((s, idx) => (
+                  <TouchableOpacity
+                    key={`${s}-${idx}`}
+                    style={styles.suggestionPill}
+                    activeOpacity={0.75}
+                    onPress={() => applySuggestion(s)}
+                  >
+                    <Ionicons name="search-outline" size={10} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                    <Text style={styles.suggestionPillText}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           )}
         </View>
-
-        {/* Live Typo & Predictive Autocomplete Chips */}
-        {isInputFocused && suggestions.length > 0 && query.trim().length >= 2 && (
-          <View style={styles.suggestionsRow}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={styles.suggestionsContent}
-            >
-              {suggestions.map((s, idx) => (
-                <TouchableOpacity
-                  key={`${s}-${idx}`}
-                  style={styles.suggestionPill}
-                  activeOpacity={0.75}
-                  onPress={() => applySuggestion(s)}
-                >
-                  <Ionicons name="search-outline" size={10} color={colors.textSecondary} style={{ marginRight: 4 }} />
-                  <Text style={styles.suggestionPillText}>{s}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
       </View>
 
       {/* 2. RECENT SEARCHES OVERLAY (When search is focused but empty) */}
@@ -586,9 +599,10 @@ export default function ExploreScreen() {
           </View>
 
           <FlatList
+            key={`search-${numColumns}`}
             data={searchResults}
             keyExtractor={(item) => item.id}
-            numColumns={NUM_COLUMNS}
+            numColumns={numColumns}
             renderItem={({ item }) => <PosterCard item={item} width={cardWidth} showProgress={false} />}
             columnWrapperStyle={styles.gridRow}
             contentContainerStyle={styles.searchGridContent}
@@ -778,9 +792,10 @@ export default function ExploreScreen() {
             </View>
           ) : (
             <FlatList
+              key={`genre-${numColumns}`}
               data={genreItems}
               keyExtractor={(item, index) => `${item.id}-${index}`}
-              numColumns={NUM_COLUMNS}
+              numColumns={numColumns}
               renderItem={({ item }) => (
                 <PosterCard item={item} width={cardWidth} showProgress={false} />
               )}
@@ -840,12 +855,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.void,
   },
   header: {
-    paddingHorizontal: 16,
     paddingTop: Platform.OS === 'web' ? ('max(env(safe-area-inset-top, 0px), 12px)' as any) : 8,
     paddingBottom: 12,
     backgroundColor: colors.void,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  headerContent: {
+    paddingHorizontal: 16,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -932,6 +952,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.void,
     paddingHorizontal: 16,
     paddingTop: 16,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   recentSection: {
     marginBottom: 24,
@@ -1130,6 +1153,9 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     flex: 1,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   searchFormatBar: {
     backgroundColor: colors.void,
@@ -1137,7 +1163,7 @@ const styles = StyleSheet.create({
   searchGridContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'web' ? 84 : 24,
+    paddingBottom: Platform.OS === 'web' ? 96 : 24,
   },
   searchResultsHeader: {
     flexDirection: 'row',
@@ -1170,11 +1196,14 @@ const styles = StyleSheet.create({
   },
   genreCatalogueContainer: {
     flex: 1,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   catalogueGridContent: {
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: Platform.OS === 'web' ? 84 : 24,
+    paddingBottom: Platform.OS === 'web' ? 96 : 24,
   },
   skeletonGrid: {
     flexDirection: 'row',

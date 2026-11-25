@@ -19,7 +19,6 @@ import { useTracking } from '../../context/TrackingContext';
 import { PosterCard } from '../../components/PosterCard';
 import { MediaItem } from '../../services/types';
 
-const NUM_COLUMNS = 3;
 const HORIZONTAL_PADDING = 32; // 16px left + 16px right
 const GRID_GAP = 10;
 
@@ -27,11 +26,23 @@ export default function ListDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { watchlists, deleteWatchlist, toggleTitleInWatchlist, resolveMediaItem } = useTracking();
   const { width: windowWidth } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
 
-  // Dynamic 3-column width calculated to fill viewport edge-to-edge
+  const effectiveWidth = useMemo(() => {
+    return isWeb ? Math.min(windowWidth, 1280) : windowWidth;
+  }, [isWeb, windowWidth]);
+
+  const numColumns = useMemo(() => {
+    if (effectiveWidth >= 1200) return 6;
+    if (effectiveWidth >= 900) return 5;
+    if (effectiveWidth >= 600) return 4;
+    return 3;
+  }, [effectiveWidth]);
+
+  // Dynamic responsive width calculated to fill viewport
   const cardWidth = useMemo(
-    () => Math.floor((windowWidth - HORIZONTAL_PADDING - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS),
-    [windowWidth]
+    () => Math.floor((effectiveWidth - HORIZONTAL_PADDING - GRID_GAP * (numColumns - 1)) / numColumns),
+    [effectiveWidth, numColumns]
   );
 
   const list = watchlists.find((l) => l.id === id);
@@ -123,9 +134,10 @@ export default function ListDetailScreen() {
 
       {/* 2. FlatList Grid with Symmetrical Paddings */}
       <FlatList
+        key={`list-${numColumns}`}
         data={items}
         keyExtractor={(item) => item.id}
-        numColumns={NUM_COLUMNS}
+        numColumns={numColumns}
         columnWrapperStyle={styles.gridRow}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -210,6 +222,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.void,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   backBtn: {
     width: 34,
@@ -245,6 +260,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 120,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   metaSection: {
     marginBottom: 14,
