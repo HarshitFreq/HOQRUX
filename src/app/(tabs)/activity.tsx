@@ -781,6 +781,38 @@ export default function ActivityScreen() {
               </View>
             </View>
 
+            {/* PWA Installation Card */}
+            <View style={styles.settingsCard}>
+              <View style={styles.settingsHeaderRow}>
+                <View style={styles.settingsHeaderIconBox}>
+                  <Ionicons name="download-outline" size={16} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.settingsCardTitle}>INSTALL AS APP // PWA GUIDE</Text>
+                  <Text style={styles.settingsCardDesc}>
+                    Add Hoqrux to your home screen or desktop dock for full-screen mode, instant offline launch, and zero browser bars.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.settingActionRow}>
+                <Text style={styles.settingStatusLabel}>PROGRESSIVE WEB APP</Text>
+                <TouchableOpacity
+                  style={[styles.toggleBtn, styles.toggleBtnActive]}
+                  onPress={() => {
+                    feedback.tap();
+                    router.push('/welcome');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="open-outline" size={12} color={colors.accent} />
+                  <Text style={[styles.toggleText, styles.toggleTextActive]}>
+                    INSTALL GUIDE →
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Data & Compliance Card */}
             <View style={styles.settingsCard}>
               <View style={styles.settingsHeaderRow}>
