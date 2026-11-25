@@ -33,6 +33,7 @@
     <!-- React Native Web Recommended Reset & Desktop Frame -->
     <style id="expo-reset">
       :root {
+        color-scheme: dark;
         --sat: env(safe-area-inset-top, 0px);
         --sar: env(safe-area-inset-right, 0px);
         --sab: env(safe-area-inset-bottom, 0px);
@@ -47,6 +48,8 @@
       html {
         height: 100%;
         height: -webkit-fill-available;
+        background-color: #050507 !important;
+        color-scheme: dark;
       }
 
       body {
@@ -62,7 +65,8 @@
         padding: 0;
         overflow: hidden;
         overscroll-behavior: none;
-        background-color: #050507;
+        background-color: #050507 !important;
+        color-scheme: dark;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         -webkit-touch-callout: none;
@@ -73,6 +77,17 @@
       #root {
         position: absolute;
         top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background-color: #050507 !important;
+        color-scheme: dark;
+      }
         left: 0;
         right: 0;
         bottom: 0;

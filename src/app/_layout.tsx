@@ -6,6 +6,7 @@ import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { enableScreens } from 'react-native-screens';
+import { ThemeProvider, DarkTheme } from '@react-navigation/native';
 import { AuthProvider } from '../context/AuthContext';
 import { TrackingProvider } from '../context/TrackingContext';
 import { initNotifications } from '../services/notificationService';
@@ -43,6 +44,20 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
     </SafeAreaView>
   );
 }
+
+const HoqruxDarkTheme = {
+  ...DarkTheme,
+  dark: true,
+  colors: {
+    ...DarkTheme.colors,
+    primary: colors.accent,
+    background: colors.void,
+    card: colors.void,
+    border: colors.border,
+    text: colors.textPrimary,
+    notification: colors.accent,
+  },
+};
 
 export default function RootLayout() {
   // Preload Satoshi font family and Asimovian for brand logo
@@ -89,43 +104,49 @@ export default function RootLayout() {
       <AuthProvider>
         <TrackingProvider>
           <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.void },
-              animation: 'fade',
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="title/[id]"
-              options={{
+          <ThemeProvider value={HoqruxDarkTheme}>
+            <Stack
+              screenOptions={{
                 headerShown: false,
-                animation: 'slide_from_right',
+                contentStyle: { backgroundColor: colors.void },
+                animation: Platform.OS === 'web' ? 'none' : 'fade',
               }}
-            />
-            <Stack.Screen
-              name="list/[id]"
-              options={{
-                headerShown: false,
-                animation: 'slide_from_right',
-              }}
-            />
-            <Stack.Screen
-              name="radar"
-              options={{
-                headerShown: false,
-                animation: 'slide_from_right',
-              }}
-            />
-            <Stack.Screen
-              name="+not-found"
-              options={{
-                headerShown: false,
-                animation: 'fade',
-              }}
-            />
-          </Stack>
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false, contentStyle: { backgroundColor: colors.void } }} />
+              <Stack.Screen
+                name="title/[id]"
+                options={{
+                  headerShown: false,
+                  animation: Platform.OS === 'web' ? 'none' : 'slide_from_right',
+                  contentStyle: { backgroundColor: colors.void },
+                }}
+              />
+              <Stack.Screen
+                name="list/[id]"
+                options={{
+                  headerShown: false,
+                  animation: Platform.OS === 'web' ? 'none' : 'slide_from_right',
+                  contentStyle: { backgroundColor: colors.void },
+                }}
+              />
+              <Stack.Screen
+                name="radar"
+                options={{
+                  headerShown: false,
+                  animation: Platform.OS === 'web' ? 'none' : 'slide_from_right',
+                  contentStyle: { backgroundColor: colors.void },
+                }}
+              />
+              <Stack.Screen
+                name="+not-found"
+                options={{
+                  headerShown: false,
+                  animation: 'fade',
+                  contentStyle: { backgroundColor: colors.void },
+                }}
+              />
+            </Stack>
+          </ThemeProvider>
         </TrackingProvider>
       </AuthProvider>
     </SafeAreaProvider>

@@ -50,6 +50,7 @@ export default function TabLayout() {
       }}
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: colors.void },
         tabBarShowLabel: true,
         tabBarLabelPosition: 'below-icon',
         tabBarActiveTintColor: '#FFFFFF',
