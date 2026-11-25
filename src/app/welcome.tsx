@@ -1,8 +1,8 @@
 /**
  * Hoqrux Landing & PWA Installation Guide
  * 
- * Extremely minimal, cinephile ledger presentation.
- * Pure Swiss typography, stark pitch-black aesthetic, zero marketing clutter.
+ * Minimal, clean presentation using simple, common English words.
+ * Pitch-black background, crisp typography, and easy install steps.
  */
 
 import React, { useState, useMemo } from 'react';
@@ -60,25 +60,24 @@ export default function WelcomeScreen() {
           {/* Top Brand Marker */}
           <View style={styles.brandRow}>
             <Text style={styles.brandLogo}>HOQRUX</Text>
-            <Text style={styles.brandEdition}>{'/'+'/ LEDGER'}</Text>
           </View>
 
           {/* Stark Headline */}
           <Text style={styles.headline}>
-            A quiet ledger for cinema.
+            A quiet place for movies and shows.
           </Text>
 
-          {/* Candid Cinephile Manifesto */}
+          {/* Candid Plain English Description */}
           <Text style={styles.bodyParagraph}>
-            Most tracking apps want your attention. They push social feeds, five-star hot takes, and algorithms designed to keep you scrolling.
+            Most apps want you to scroll feeds, write reviews for likes, and watch ads.
           </Text>
 
           <Text style={styles.bodyParagraph}>
-            Hoqrux is just a pitch-black notebook for what you watch. Log an episode the second credits roll, check release countdowns without spoilers, and keep private reflections that never get posted to a feed.
+            Hoqrux is just a simple notebook for what you watch. Mark an episode when you finish it, see when the next one airs, and write quick notes just for yourself.
           </Text>
 
           <Text style={styles.bodyFootnote}>
-            No ads. No follower counts. No social noise.
+            No ads. No followers. No feeds.
           </Text>
 
           {/* Direct Entry Button */}
@@ -94,7 +93,7 @@ export default function WelcomeScreen() {
           <View style={styles.installBlock}>
             <View style={styles.installHeaderRow}>
               <Text style={styles.installTag}>ADD TO HOME SCREEN</Text>
-              <Text style={styles.installSub}>NO APP STORE REQUIRED</Text>
+              <Text style={styles.installSub}>NO APP STORE NEEDED</Text>
             </View>
 
             {/* Platform Selector Tabs */}
@@ -174,22 +173,22 @@ export default function WelcomeScreen() {
 
               {selectedPlatform === 'android' && (
                 <Text style={styles.instructionText}>
-                  In Chrome, tap the <Text style={styles.highlight}>three-dot menu (⋮)</Text> in the upper right → select <Text style={styles.highlight}>Install app</Text> (or Add to Home screen).
+                  In Chrome, tap the <Text style={styles.highlight}>three dots (⋮)</Text> in the top right → select <Text style={styles.highlight}>Install app</Text> (or Add to Home screen).
                 </Text>
               )}
 
               {selectedPlatform === 'desktop' && (
                 <Text style={styles.instructionText}>
-                  In Chrome, Edge, or Brave, click the <Text style={styles.highlight}>Install icon (⊕)</Text> at the right end of the address bar to pin Hoqrux to your dock or taskbar.
+                  In Chrome, Edge, or Brave, click the <Text style={styles.highlight}>Install button (⊕)</Text> in the address bar to add Hoqrux to your computer.
                 </Text>
               )}
             </View>
           </View>
 
-          {/* Minimalist Colophon Footer */}
+          {/* Minimal Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              HOQRUX • INDEPENDENT & TRACKER-FREE • DATA VIA TMDB
+              HOQRUX • FREE • NO ADS • DATA FROM TMDB
             </Text>
           </View>
         </View>
@@ -235,13 +234,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: colors.accent,
     letterSpacing: Platform.OS === 'ios' ? 2 : 0,
-    includeFontPadding: false,
-  },
-  brandEdition: {
-    fontFamily: typography.fontBold,
-    fontSize: 10,
-    color: colors.textMuted,
-    letterSpacing: 1.5,
     includeFontPadding: false,
   },
 
