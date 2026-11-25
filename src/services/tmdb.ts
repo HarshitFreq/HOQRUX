@@ -356,55 +356,23 @@ export const tmdbService = {
           const data = await res.json();
           const item = formatTmdbDetails(data, mediaType);
           
-          // If TV show, fetch episodes for all available seasons
+          // If TV show, build seasons structure directly from TMDb metadata without hammering the network
           if (mediaType === 'tv') {
             const rawSeasons: any[] = (data.seasons || []).filter((s: any) => s.season_number > 0);
             const numSeasons = data.number_of_seasons || rawSeasons.length || 1;
 
-            const seasonsToFetch = rawSeasons.length > 0
-              ? rawSeasons.slice(0, 10)
-              : Array.from({ length: Math.min(numSeasons, 10) }, (_, i) => ({
-                  season_number: i + 1,
-                  name: `Season ${i + 1}`,
-                  episode_count: 10,
-                }));
-
-            try {
-              const fetchedSeasons = await Promise.all(
-                seasonsToFetch.map(async (sMeta: any) => {
+            const allSeasons = rawSeasons.length > 0
+              ? rawSeasons.map((sMeta: any) => {
                   const sNum = sMeta.season_number;
-                  try {
-                    const sRes = await fetchWithTimeout(`${TMDB_API_BASE}/tv/${cleanId}/season/${sNum}?api_key=${apiKey}`).catch(() => null);
-                    if (sRes && sRes.ok) {
-                      const sData = await sRes.json();
-                      return {
-                        seasonNumber: sNum,
-                        title: sData.name || `Season ${sNum}`,
-                        episodeCount: sData.episodes?.length || sMeta.episode_count || 0,
-                        airDate: sData.air_date || sMeta.air_date || '',
-                        episodes: (sData.episodes || []).map((ep: any) => ({
-                          id: `${item.id}-s${sNum}e${ep.episode_number}`,
-                          episodeNumber: ep.episode_number,
-                          seasonNumber: sNum,
-                          title: ep.name || `Episode ${ep.episode_number}`,
-                          overview: ep.overview,
-                          runtime: ep.runtime || item.runtime || 45,
-                          airDate: ep.air_date,
-                          stillPath: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : undefined,
-                          rating: ep.vote_average,
-                        })),
-                      };
-                    }
-                  } catch {
-                    // Fallback
-                  }
-
                   const epCount = sMeta.episode_count || 10;
                   return {
                     seasonNumber: sNum,
                     title: sMeta.name || `Season ${sNum}`,
                     episodeCount: epCount,
                     airDate: sMeta.air_date || '',
+                    posterPath: sMeta.poster_path
+                      ? `https://image.tmdb.org/t/p/w500${sMeta.poster_path}`
+                      : undefined,
                     episodes: Array.from({ length: epCount }, (_, idx) => ({
                       id: `${item.id}-s${sNum}e${idx + 1}`,
                       episodeNumber: idx + 1,
@@ -412,43 +380,32 @@ export const tmdbService = {
                       title: `Episode ${idx + 1}`,
                       runtime: item.runtime || 45,
                       overview: `Episode ${idx + 1} of Season ${sNum}`,
-                      stillPath: item.backdropPath || item.posterPath,
+                      airDate: sMeta.air_date || '',
+                      stillPath: sMeta.poster_path
+                        ? `https://image.tmdb.org/t/p/w500${sMeta.poster_path}`
+                        : (item.backdropPath || item.posterPath),
                     })),
                   };
                 })
-              );
-
-              // Include remaining seasons beyond the initial 10 so the user has full access to every season
-              const remainingMeta = rawSeasons.length > 10 ? rawSeasons.slice(10) : [];
-              const remainingSeasons = remainingMeta.map((sMeta: any) => {
-                const sNum = sMeta.season_number;
-                const epCount = sMeta.episode_count || 10;
-                return {
-                  seasonNumber: sNum,
-                  title: sMeta.name || `Season ${sNum}`,
-                  episodeCount: epCount,
-                  airDate: sMeta.air_date || '',
-                  posterPath: sMeta.poster_path ? `https://image.tmdb.org/t/p/w500${sMeta.poster_path}` : undefined,
-                  episodes: Array.from({ length: epCount }, (_, idx) => ({
-                    id: `${item.id}-s${sNum}e${idx + 1}`,
+              : Array.from({ length: Math.min(numSeasons, 10) }, (_, i) => ({
+                  seasonNumber: i + 1,
+                  title: `Season ${i + 1}`,
+                  episodeCount: 10,
+                  airDate: '',
+                  episodes: Array.from({ length: 10 }, (_, idx) => ({
+                    id: `${item.id}-s${i + 1}e${idx + 1}`,
                     episodeNumber: idx + 1,
-                    seasonNumber: sNum,
+                    seasonNumber: i + 1,
                     title: `Episode ${idx + 1}`,
                     runtime: item.runtime || 45,
-                    overview: `Episode ${idx + 1} of Season ${sNum}`,
-                    stillPath: sMeta.poster_path
-                      ? `https://image.tmdb.org/t/p/w500${sMeta.poster_path}`
-                      : (item.backdropPath || item.posterPath),
+                    overview: `Episode ${idx + 1} of Season ${i + 1}`,
+                    airDate: '',
+                    stillPath: item.backdropPath || item.posterPath,
                   })),
-                };
-              });
+                }));
 
-              const allSeasons = [...fetchedSeasons, ...remainingSeasons];
-              item.seasons = allSeasons;
-              item.totalEpisodes = allSeasons.reduce((acc, s) => acc + s.episodeCount, 0);
-            } catch (epError) {
-              console.warn('Failed to load season details:', epError);
-            }
+            item.seasons = allSeasons;
+            item.totalEpisodes = allSeasons.reduce((acc: number, s: any) => acc + s.episodeCount, 0);
           }
 
           // If Movie belongs to a collection, fetch and cache collection timeline info

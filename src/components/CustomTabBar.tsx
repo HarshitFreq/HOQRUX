@@ -6,8 +6,8 @@
  * and safe-area calculation errors on iOS Safari, Android, and standalone PWAs.
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { colors } from '../theme/colors';
@@ -20,6 +20,7 @@ export interface CustomTabBarProps {
     routes: { key: string; name: string }[];
   };
   descriptors?: Record<string, any>;
+  navigation?: any;
   emitter?: any;
   navigateToTab?: (routeKey: string) => void;
   insets?: {
@@ -69,21 +70,65 @@ const TAB_CONFIGS: Record<string, TabConfig> = {
   },
 };
 
-export function CustomTabBar({ state, emitter, navigateToTab, insets }: CustomTabBarProps) {
+export function CustomTabBar({
+  state,
+  descriptors,
+  navigation,
+  emitter,
+  navigateToTab,
+  insets,
+}: CustomTabBarProps) {
   const isWeb = Platform.OS === 'web';
   const isNativeIOS = Platform.OS === 'ios';
 
-  // On Web: use CSS max() and env() to adaptively support:
-  // 1. Standalone PWA on iPhone (where env(safe-area-inset-bottom) is 34px -> sets padding to 40px)
-  // 2. Safari browser on iPhone (where env(safe-area-inset-bottom) is 0px -> sets padding to 14px)
-  // 3. Android/Desktop browsers (sets padding to 14px)
-  // On Native iOS/Android: use react-native-safe-area-context insets.
+  // Adaptive safe area padding:
+  // - iOS Standalone PWA: env(safe-area-inset-bottom) is 34px -> sets padding to 40px (clears Home Indicator)
+  // - iOS Safari Browser: env is 0px -> sets padding to 14px (sits directly above Safari toolbar)
+  // - Native iOS: insets.bottom (34px) + 6 = 40px
+  // - Android / Desktop: 14px
   const webBottomPadding = 'calc(max(env(safe-area-inset-bottom, 0px), 10px) + 6px)';
   const nativeBottomPadding = isNativeIOS
     ? Math.max(insets?.bottom || 0, 32)
     : (insets?.bottom || 0) + 6;
 
   const dynamicPaddingBottom = isWeb ? (webBottomPadding as any) : nativeBottomPadding;
+
+  const handleTabPress = useCallback(
+    (route: { key: string; name: string }, isFocused: boolean, config: TabConfig) => {
+      feedback.tap();
+
+      const event = emitter?.emit?.({
+        type: 'tabPress',
+        target: route.key,
+        canPreventDefault: true,
+      });
+
+      if (!isFocused && !event?.defaultPrevented) {
+        // Priority 1: React Navigation descriptor navigate
+        const descriptorNav = descriptors?.[route.key]?.navigation;
+        if (descriptorNav?.navigate) {
+          descriptorNav.navigate(route.name);
+          return;
+        }
+
+        // Priority 2: Direct navigation prop
+        if (navigation?.navigate) {
+          navigation.navigate(route.name);
+          return;
+        }
+
+        // Priority 3: Expo Router bottom tab callback
+        if (navigateToTab) {
+          navigateToTab(route.key);
+          return;
+        }
+
+        // Priority 4: Expo Router global navigation
+        router.navigate(config.route as any);
+      }
+    },
+    [descriptors, emitter, navigation, navigateToTab]
+  );
 
   return (
     <View style={[styles.bar, { paddingBottom: dynamicPaddingBottom }]}>
@@ -97,42 +142,26 @@ export function CustomTabBar({ state, emitter, navigateToTab, insets }: CustomTa
           inactiveIcon: 'square-outline' as const,
         };
 
-        const onPress = () => {
-          feedback.tap();
-          const event = emitter?.emit?.({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
-
-          if (!isFocused && !event?.defaultPrevented) {
-            if (navigateToTab) {
-              navigateToTab(route.key);
-            } else {
-              router.navigate(config.route as any);
-            }
-          }
-        };
-
-        const onLongPress = () => {
-          emitter?.emit?.({
-            type: 'tabLongPress',
-            target: route.key,
-          });
-        };
-
         return (
-          <TouchableOpacity
+          <Pressable
             key={route.key}
-            activeOpacity={0.7}
             accessibilityRole="tab"
             accessibilityState={{ selected: isFocused }}
             accessibilityLabel={`${config.label}, tab, ${index + 1} of ${state.routes.length}`}
-            onPress={onPress}
-            onLongPress={onLongPress}
-            style={styles.tabItem}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            onPress={() => handleTabPress(route, isFocused, config)}
+            onLongPress={() => {
+              emitter?.emit?.({
+                type: 'tabLongPress',
+                target: route.key,
+              });
+            }}
+            style={({ pressed }) => [
+              styles.tabItem,
+              pressed && styles.tabItemPressed,
+            ]}
           >
-            <View style={styles.iconContainer}>
+            <View style={styles.iconContainer} pointerEvents="none">
               <Ionicons
                 name={isFocused ? config.activeIcon : config.inactiveIcon}
                 size={20}
@@ -148,7 +177,7 @@ export function CustomTabBar({ state, emitter, navigateToTab, insets }: CustomTa
             >
               {config.label}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         );
       })}
     </View>
@@ -171,14 +200,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 46,
+    minHeight: 48,
     paddingVertical: 2,
     ...(Platform.OS === 'web'
       ? {
           touchAction: 'manipulation' as any,
           cursor: 'pointer' as any,
+          userSelect: 'none' as any,
         }
       : {}),
+  },
+  tabItemPressed: {
+    opacity: 0.6,
   },
   iconContainer: {
     height: 24,
