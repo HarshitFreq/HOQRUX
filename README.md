@@ -1,127 +1,90 @@
-# HOQRUX
+# Hoqrux — Film & TV Tracker App
 
-**Swiss Brutalist Media Tracker // Local-First Personal Logbook**
+A clean, dark-mode app for tracking movies, TV series, and anime, plus finding what to watch next.
 
-A high-performance, distraction-free logbook for tracking films and television series with instant local storage and silent background cloud synchronization.
+I built Hoqrux because most tracking apps feel cluttered with social feeds, ads, and noise. This is just a fast, pitch-black space to log episodes, keep watchlists, check when new seasons air, and write quick notes for yourself.
 
----
-
-## Features
-
-- **Swiss Brutalist Interface**: Void-black background (`#050507`), crisp 1px borders, high-contrast monospace & grotesque typography, with zero unnecessary decorative filler.
-- **Local-First Architecture**: Instant writes, zero latency, offline-ready with persistent local storage.
-- **Automatic Background Cloud Sync**: Replicates tracking records, watchlists, and viewing logs to Supabase PostgreSQL automatically whenever items are logged or updated.
-- **Deep Episode & Season Progress**: Track television shows episode-by-episode with progress indicators, season completion checks, and next episode airdate tracking.
-- **Viewing Analytics**: Track watch time, episodes completed, feature films logged, average ratings, and genre distributions.
-- **Custom & System Watchlists**: Manage Watching, Plan to Watch, Completed collections alongside user-defined custom watchlists.
+Works on iOS, Android, and the web (as an installable PWA).
 
 ---
 
-## Tech Stack
+## What it does
 
-- **Framework**: React Native 0.88 + Expo SDK 58
-- **Navigation**: Expo Router v5 (file-based routing)
-- **Language**: TypeScript (strict mode)
-- **Local Storage**: AsyncStorage
-- **Cloud Database**: Supabase (PostgreSQL with Row-Level Security)
-- **Metadata Provider**: TMDB API v3
+- **Track what you watch**: Mark movies as watched, log TV/anime episode by episode, and see season progress at a glance.
+- **Release radar**: Check upcoming episode air dates and countdowns for the shows you follow.
+- **Recommendations & search**: Browse by genre, check TMDB and IMDb ratings side by side, and see where titles are streaming.
+- **Watchlists & notes**: Organize titles into Watching, Want to Watch, Completed, or your own custom lists, with private notes that stay yours.
+- **Local-first with optional sync**: Everything saves locally on your device right away, and syncs to Supabase in the background if you sign in.
 
 ---
 
-## Project Structure
+## Stack
 
-```
+- **App**: React Native 0.88 + Expo SDK 58 + Expo Router
+- **Language**: TypeScript
+- **Local storage**: AsyncStorage
+- **Cloud sync & auth**: Supabase (Postgres + RLS)
+- **Movie & TV data**: TMDB API
+
+---
+
+## Folder layout
+
+```text
 src/
-├── app/                 # Expo Router file-based screens and tabs
-│   ├── (tabs)/          # Main tab navigators (Now, Explore, Lists, Profile)
-│   ├── title/[id].tsx   # Media detail and episode tracking screen
-│   └── _layout.tsx      # Global provider wraps and root stack
-├── components/          # Brutalist UI components
-├── context/             # Global React state (AuthContext, TrackingContext)
-├── services/            # API clients, local storage, and database services
-│   ├── api/config.ts    # Centralized environment variable resolver
-│   ├── database.ts      # Bidirectional local-first and cloud synchronization
-│   ├── supabase.ts      # Supabase client singleton
-│   ├── tmdb.ts          # Media metadata client
-│   └── db/schema.sql    # PostgreSQL schema and RLS policies
-└── theme/               # Color system and typography definitions
+├── app/                 # Screens and tabs (Now, Explore, Lists, Profile, Welcome, Radar)
+│   ├── (tabs)/          # Main bottom/floating tab screens
+│   └── title/[id].tsx   # Title details, episode tracker, ratings & notes
+├── components/          # Shared UI components
+├── context/             # Auth and tracking state
+├── services/            # TMDB client, local storage, Supabase sync & schema.sql
+└── theme/               # Colors and fonts
 ```
 
 ---
 
-## Getting Started
+## Running it locally
 
-### Prerequisites
+You'll need Node.js 18+ and a free TMDB API key. Supabase is optional (only needed if you want cloud sync across devices).
 
-- Node.js 18+
-- npm or bun
-- Expo Go on a mobile device or an iOS/Android emulator
-
-### Installation
-
-1. Clone the repository:
+1. Clone the repo and install packages:
    ```bash
    git clone https://github.com/HarshitFreq/HOQRUX.git
    cd HOQRUX
-   ```
-
-2. Install dependencies:
-   ```bash
    npm install
    ```
 
-3. Configure Environment Variables:
-   Copy `.env.example` to `.env` and fill in your keys:
+2. Set up your `.env` file:
    ```bash
    cp .env.example .env
    ```
-
-   Required variables:
+   Add your keys:
    ```env
    EXPO_PUBLIC_TMDB_API_KEY=your_tmdb_api_key
    EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```
 
-4. Database Setup (Optional):
-   To enable cross-device cloud sync, run the SQL script in `src/services/db/schema.sql` inside your Supabase project's SQL Editor.
+3. *(Optional)* If you're using Supabase for sync, run `src/services/db/schema.sql` in the Supabase SQL Editor to set up the `profiles`, `user_tracking`, `user_watchlists`, and `user_history` tables.
 
-5. Start the development server:
+4. Start Expo:
    ```bash
    npx expo start
    ```
+   From there you can open it on Android, iOS, or press `w` for web.
 
 ---
 
-## Database Schema
-
-The backend uses four normalized PostgreSQL tables with Row-Level Security (RLS):
-
-- `profiles`: User account credentials, email, and preferences.
-- `user_tracking`: Current watch status, ratings, favorite status, and episode completion progress.
-- `user_watchlists`: System and custom watchlist definitions and title associations.
-- `user_history`: Chronological viewing logs with timestamps.
-
-The complete schema migration script is available in `src/services/db/schema.sql`.
-
----
-
-## Verification & Scripts
+## Useful commands
 
 ```bash
-# Typecheck
-npx tsc --noEmit
-
-# Lint
-npx expo lint
-
-# Start with target platform
-npx expo start --android
-npx expo start --ios
+npx tsc --noEmit          # Typecheck
+npx expo lint             # Lint
+npx expo start --web      # Run web / PWA locally
 ```
 
 ---
 
 ## License
 
-This project is open-source under the MIT License.
+MIT
